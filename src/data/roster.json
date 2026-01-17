@@ -1,0 +1,124 @@
+{
+  "players": [
+    {
+      "id": "p1",
+      "firstName": "John",
+      "lastName": "Smith",
+      "gender": "MALE"
+    },
+    {
+      "id": "p2",
+      "firstName": "Mike",
+      "lastName": "Johnson",
+      "gender": "MALE"
+    },
+    {
+      "id": "p3",
+      "firstName": "Dave",
+      "lastName": "Williams",
+      "gender": "MALE"
+    },
+    {
+      "id": "p4",
+      "firstName": "Tom",
+      "lastName": "Brown",
+      "gender": "MALE"
+    },
+    {
+      "id": "p5",
+      "firstName": "Chris",
+      "lastName": "Davis",
+      "gender": "MALE"
+    },
+    {
+      "id": "p6",
+      "firstName": "Ryan",
+      "lastName": "Miller",
+      "gender": "MALE"
+    },
+    {
+      "id": "p7",
+      "firstName": "Jake",
+      "lastName": "Wilson",
+      "gender": "MALE"
+    },
+    {
+      "id": "p8",
+      "firstName": "Matt",
+      "lastName": "Moore",
+      "gender": "MALE"
+    },
+    {
+      "id": "p9",
+      "firstName": "Alex",
+      "lastName": "Taylor",
+      "gender": "MALE"
+    },
+    {
+      "id": "p10",
+      "firstName": "Brad",
+      "lastName": "Anderson",
+      "gender": "MALE"
+    },
+    {
+      "id": "p11",
+      "firstName": "Kevin",
+      "lastName": "Thomas",
+      "gender": "MALE"
+    },
+    {
+      "id": "p12",
+      "firstName": "Steve",
+      "lastName": "Jackson",
+      "gender": "MALE"
+    },
+    {
+      "id": "p13",
+      "firstName": "Dan",
+      "lastName": "White",
+      "gender": "MALE"
+    },
+    {
+      "id": "p14",
+      "firstName": "Paul",
+      "lastName": "Harris",
+      "gender": "MALE"
+    },
+    {
+      "id": "p15",
+      "firstName": "Sarah",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    {
+      "id": "p16",
+      "firstName": "Emma",
+      "lastName": "Garcia",
+      "gender": "FEMALE"
+    },
+    {
+      "id": "p17",
+      "firstName": "Jessica",
+      "lastName": "Martinez",
+      "gender": "FEMALE"
+    },
+    {
+      "id": "p18",
+      "firstName": "Ashley",
+      "lastName": "Robinson",
+      "gender": "FEMALE"
+    },
+    {
+      "id": "p19",
+      "firstName": "Lauren",
+      "lastName": "Clark",
+      "gender": "FEMALE"
+    },
+    {
+      "id": "p20",
+      "firstName": "Megan",
+      "lastName": "Rodriguez",
+      "gender": "FEMALE"
+    }
+  ]
+}
