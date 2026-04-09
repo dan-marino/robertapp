@@ -2,7 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import type { Player, RSVP, Season, Game } from '@cli/types';
 
-const DATA_DIR = path.join(__dirname, '../../../src/data');
+// process.cwd() is always the web/ directory when running next dev/build/start
+const DATA_DIR = path.join(process.cwd(), '../src/data');
 
 function dataPath(filename: string): string {
   return path.join(DATA_DIR, filename);
