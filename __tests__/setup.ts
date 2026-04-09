@@ -12,9 +12,11 @@ export function createPlayer(
   id: string,
   firstName: string,
   lastName: string,
-  gender: Gender
+  gender: Gender,
+  preferredPositions?: Position[],
+  antiPositions?: Position[]
 ): Player {
-  return { id, firstName, lastName, gender };
+  return { id, firstName, lastName, gender, preferredPositions, antiPositions };
 }
 
 export function createRSVP(playerId: string, isLate: boolean = false): RSVP {
