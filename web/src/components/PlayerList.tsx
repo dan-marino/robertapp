@@ -21,18 +21,13 @@ export default function PlayerList({ players }: Props) {
     router.refresh();
   }
 
-  if (adding) {
+  if (adding || editing) {
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 max-w-lg">
-        <PlayerForm onClose={() => setAdding(false)} />
-      </div>
-    );
-  }
-
-  if (editing) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg p-5 max-w-lg">
-        <PlayerForm player={editing} onClose={() => setEditing(null)} />
+        <PlayerForm
+          player={editing ?? undefined}
+          onClose={() => { setAdding(false); setEditing(null); }}
+        />
       </div>
     );
   }

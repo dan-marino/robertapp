@@ -106,55 +106,23 @@ export default function PlayerForm({ player, onClose }: Props) {
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Preferred Positions <span className="text-gray-400 font-normal">(up to 3)</span>
-        </label>
-        <div className="flex flex-wrap gap-1.5">
-          {ALL_POSITIONS.map(pos => {
-            const active = preferred.includes(pos);
-            const disabled = !active && preferred.length >= 3;
-            return (
-              <button
-                key={pos}
-                type="button"
-                disabled={disabled}
-                onClick={() => togglePosition(pos, preferred, setPreferred, 3)}
-                className={`px-2.5 py-1 text-xs rounded border font-medium transition-colors
-                  ${active ? 'bg-green-100 border-green-400 text-green-800' : 'bg-white border-gray-300 text-gray-600'}
-                  ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:border-gray-400 cursor-pointer'}`}
-              >
-                {pos}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <PositionPicker
+        label="Preferred Positions"
+        hint="up to 3"
+        selected={preferred}
+        max={3}
+        activeClass="bg-green-100 border-green-400 text-green-800"
+        onToggle={pos => togglePosition(pos, preferred, setPreferred, 3)}
+      />
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Anti-Positions <span className="text-gray-400 font-normal">(up to 2, never assigned here)</span>
-        </label>
-        <div className="flex flex-wrap gap-1.5">
-          {ALL_POSITIONS.map(pos => {
-            const active = anti.includes(pos);
-            const disabled = !active && anti.length >= 2;
-            return (
-              <button
-                key={pos}
-                type="button"
-                disabled={disabled}
-                onClick={() => togglePosition(pos, anti, setAnti, 2)}
-                className={`px-2.5 py-1 text-xs rounded border font-medium transition-colors
-                  ${active ? 'bg-red-100 border-red-400 text-red-800' : 'bg-white border-gray-300 text-gray-600'}
-                  ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:border-gray-400 cursor-pointer'}`}
-              >
-                {pos}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <PositionPicker
+        label="Anti-Positions"
+        hint="up to 2, never assigned here"
+        selected={anti}
+        max={2}
+        activeClass="bg-red-100 border-red-400 text-red-800"
+        onToggle={pos => togglePosition(pos, anti, setAnti, 2)}
+      />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -175,5 +143,43 @@ export default function PlayerForm({ player, onClose }: Props) {
         </button>
       </div>
     </form>
+  );
+}
+
+function PositionPicker({
+  label, hint, selected, max, activeClass, onToggle,
+}: {
+  label: string;
+  hint: string;
+  selected: Position[];
+  max: number;
+  activeClass: string;
+  onToggle: (pos: Position) => void;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label} <span className="text-gray-400 font-normal">({hint})</span>
+      </label>
+      <div className="flex flex-wrap gap-1.5">
+        {ALL_POSITIONS.map(pos => {
+          const active = selected.includes(pos);
+          const disabled = !active && selected.length >= max;
+          return (
+            <button
+              key={pos}
+              type="button"
+              disabled={disabled}
+              onClick={() => onToggle(pos)}
+              className={`px-2.5 py-1 text-xs rounded border font-medium transition-colors
+                ${active ? activeClass : 'bg-white border-gray-300 text-gray-600'}
+                ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:border-gray-400 cursor-pointer'}`}
+            >
+              {pos}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

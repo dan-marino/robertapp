@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readRsvps, writeRsvps, readRoster } from '@/lib/data';
+import { readRsvps, writeRsvps } from '@/lib/data';
 import type { RSVP } from '@cli/types';
 
 export async function GET(
@@ -7,16 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const rsvps = readRsvps(id);
-
-  // If no RSVPs saved yet, default every roster player to not attending
-  if (rsvps.length === 0) {
-    const players = readRoster();
-    const defaults: RSVP[] = players.map(p => ({ playerId: p.id, isLate: false }));
-    return NextResponse.json({ rsvps: defaults, hasExisting: false });
-  }
-
-  return NextResponse.json({ rsvps, hasExisting: true });
+  return NextResponse.json(readRsvps(id));
 }
 
 export async function PUT(

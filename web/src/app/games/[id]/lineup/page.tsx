@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { readRoster, readSeason, readRsvps } from '@/lib/data';
+import { formatGameDate } from '@/lib/utils';
 import { generateLineup } from '@cli/generator';
 import LineupGrid from '@/components/LineupGrid';
 import DownloadCsvButton from '@/components/DownloadCsvButton';
@@ -13,9 +14,7 @@ export default async function LineupPage({ params }: { params: Promise<{ id: str
   const game = games.find(g => g.id === id);
   if (!game) notFound();
 
-  const date = new Date(game.date + 'T12:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-  });
+  const date = formatGameDate(game.date, 'long');
 
   const rsvps = readRsvps(id);
 

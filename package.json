@@ -8,7 +8,10 @@
     "start": "ts-node src/index.ts",
     "build": "tsc",
     "test:watch": "jest --watch --config jest.config.js",
-    "test:coverage": "jest --coverage --config jest.config.js"
+    "test:coverage": "jest --coverage --config jest.config.js",
+    "web": "npm run dev --prefix web",
+    "web:test": "npm test --prefix web",
+    "test:all": "npm test && npm run web:test"
   },
   "keywords": [],
   "author": "",

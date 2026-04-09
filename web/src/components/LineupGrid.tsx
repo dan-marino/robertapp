@@ -1,6 +1,6 @@
 'use client';
 
-import { Position, Gender } from '@cli/types';
+import { Position } from '@cli/types';
 import type { GameLineup } from '@cli/types';
 
 const INNINGS = [1, 2, 3, 4, 5, 6];

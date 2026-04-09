@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { readRoster, readSeason, readRsvps } from '@/lib/data';
+import { formatGameDate } from '@/lib/utils';
 import RsvpTable from '@/components/RsvpTable';
 
 export const dynamic = 'force-dynamic';
@@ -13,9 +14,7 @@ export default async function RsvpPage({ params }: { params: Promise<{ id: strin
   const players = readRoster();
   const rsvps = readRsvps(id);
 
-  const date = new Date(game.date + 'T12:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-  });
+  const date = formatGameDate(game.date, 'long');
 
   return (
     <div>

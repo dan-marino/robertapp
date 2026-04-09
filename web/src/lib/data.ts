@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import type { Player, RSVP, Season, Game } from '@cli/types';
 
-// process.cwd() is always the web/ directory when running next dev/build/start
 const DATA_DIR = path.join(process.cwd(), '../src/data');
 
 function dataPath(filename: string): string {
@@ -24,10 +23,12 @@ export function readSeason(): { season: Season; games: Game[] } {
 }
 
 export function readRsvps(gameId: string): RSVP[] {
-  const filePath = dataPath(`rsvps-${gameId}.json`);
-  if (!fs.existsSync(filePath)) return [];
-  const raw = fs.readFileSync(filePath, 'utf-8');
-  return JSON.parse(raw) as RSVP[];
+  try {
+    const raw = fs.readFileSync(dataPath(`rsvps-${gameId}.json`), 'utf-8');
+    return JSON.parse(raw) as RSVP[];
+  } catch {
+    return [];
+  }
 }
 
 export function writeRsvps(gameId: string, rsvps: RSVP[]): void {

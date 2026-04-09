@@ -17,7 +17,7 @@ export default function DownloadCsvButton({ gameId, lineup }: Props) {
     a.href = url;
     a.download = `lineup-${gameId}.csv`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   }
 
   return (

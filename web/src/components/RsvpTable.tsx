@@ -11,17 +11,17 @@ interface Props {
 }
 
 export default function RsvpTable({ gameId, players, initialRsvps }: Props) {
-  // Build a map: playerId → { attending, isLate }
+  const rsvpMap = new Map(initialRsvps.map(r => [r.playerId, r]));
   const initialMap = Object.fromEntries(
     players.map(p => {
-      const existing = initialRsvps.find(r => r.playerId === p.id);
+      const existing = rsvpMap.get(p.id);
       return [p.id, { attending: !!existing, isLate: existing?.isLate ?? false }];
     })
   );
 
   const [state, setState] = useState<Record<string, { attending: boolean; isLate: boolean }>>(initialMap);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<'saved' | 'error' | null>(null);
 
   function toggle(playerId: string, field: 'attending' | 'isLate') {
     setState(prev => {
@@ -31,24 +31,28 @@ export default function RsvpTable({ gameId, players, initialRsvps }: Props) {
       }
       return { ...prev, [playerId]: { ...current, isLate: !current.isLate } };
     });
-    setSaved(false);
+    setSaved(null);
   }
 
   async function handleSave() {
     setSaving(true);
-    setSaved(false);
+    setSaved(null);
     const rsvps: RSVP[] = players
       .filter(p => state[p.id].attending)
       .map(p => ({ playerId: p.id, isLate: state[p.id].isLate }));
 
-    await fetch(`/api/games/${gameId}/rsvps`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(rsvps),
-    });
-
-    setSaving(false);
-    setSaved(true);
+    try {
+      const res = await fetch(`/api/games/${gameId}/rsvps`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rsvps),
+      });
+      setSaved(res.ok ? 'saved' : 'error');
+    } catch {
+      setSaved('error');
+    } finally {
+      setSaving(false);
+    }
   }
 
   const guys = players.filter(p => p.gender === Gender.MALE);
@@ -60,7 +64,8 @@ export default function RsvpTable({ gameId, players, initialRsvps }: Props) {
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-gray-500">{attendingCount} attending</p>
         <div className="flex items-center gap-3">
-          {saved && <span className="text-sm text-green-600">Saved</span>}
+          {saved === 'saved' && <span className="text-sm text-green-600">Saved</span>}
+          {saved === 'error' && <span className="text-sm text-red-600">Save failed</span>}
           <button
             onClick={handleSave}
             disabled={saving}
