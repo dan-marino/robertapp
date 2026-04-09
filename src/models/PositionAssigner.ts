@@ -57,25 +57,25 @@ export class PositionAssigner {
    */
   private calculateTargets(): number[] {
     const targets: number[] = [];
-    
+
     // Guys get guysPerInning spots per inning
     const guysTotalSpots = this.guysPerInning * this.innings;
     const guysBase = Math.floor(guysTotalSpots / this.numGuys);
     const guysExtra = guysTotalSpots % this.numGuys;
-    
+
     for (let i = 0; i < this.numGuys; i++) {
       targets.push(guysBase + (i < guysExtra ? 1 : 0));
     }
-    
+
     // Girls get girlsPerInning spots per inning
     const girlsTotalSpots = this.girlsPerInning * this.innings;
     const girlsBase = Math.floor(girlsTotalSpots / this.numGirls);
     const girlsExtra = girlsTotalSpots % this.numGirls;
-    
+
     for (let i = 0; i < this.numGirls; i++) {
       targets.push(girlsBase + (i < girlsExtra ? 1 : 0));
     }
-    
+
     return targets;
   }
 
@@ -87,9 +87,11 @@ export class PositionAssigner {
     const inningsPlayed: number[] = Array(this.allPlayers.length).fill(0);
     const lastPlayedInning: number[] = Array(this.allPlayers.length).fill(-2);
     const lastPosition: Map<number, Position> = new Map();
-    
+    // Track how many times each player has been assigned one of their preferred positions
+    const preferredPlaysCount: number[] = Array(this.allPlayers.length).fill(0);
+
     // Initialize position arrays
-    const allPositions: Position[][] = this.allPlayers.map(() => 
+    const allPositions: Position[][] = this.allPlayers.map(() =>
       Array(this.innings).fill(Position.BENCH)
     );
 
@@ -115,22 +117,64 @@ export class PositionAssigner {
         this.girlsPerInning
       );
 
-      // Combine and assign positions
+      // Combine candidates and sort: players who can get a preferred position go first
+      // so they have the widest pool to pick from
       const playersThisInning = [...guysCandidates, ...girlsCandidates];
       const availablePositions = [...FIELD_POSITIONS];
+
+      // Sort candidates so those with unmet preferred positions get first pick
+      playersThisInning.sort((aIdx, bIdx) => {
+        const aPlayer = this.allPlayers[aIdx];
+        const bPlayer = this.allPlayers[bIdx];
+        const aPreferred = aPlayer.player.preferredPositions ?? [];
+        const bPreferred = bPlayer.player.preferredPositions ?? [];
+        const aHasPreferred = aPreferred.some(p => availablePositions.includes(p));
+        const bHasPreferred = bPreferred.some(p => availablePositions.includes(p));
+
+        if (aHasPreferred && !bHasPreferred) return -1;
+        if (!aHasPreferred && bHasPreferred) return 1;
+
+        // Both have (or don't have) preferred available — whoever has played preferred less goes first
+        return preferredPlaysCount[aIdx] - preferredPlaysCount[bIdx];
+      });
 
       playersThisInning.forEach(playerIdx => {
         if (availablePositions.length === 0) return;
 
-        // Try to give them a different position than last time
+        const player = this.allPlayers[playerIdx];
+        const preferred = player.player.preferredPositions ?? [];
+        const anti = player.player.antiPositions ?? [];
         const lastPos = lastPosition.get(playerIdx);
+
+        // Build pools in priority order
+        const preferredAvailable = availablePositions.filter(p => preferred.includes(p));
+        const nonAntiAvailable = availablePositions.filter(
+          p => !anti.includes(p) && !preferred.includes(p)
+        );
+        const antiOnly = availablePositions.filter(p => anti.includes(p));
+
         let position: Position;
 
-        if (lastPos && availablePositions.length > 1) {
-          const differentPositions = availablePositions.filter(p => p !== lastPos);
-          position = differentPositions.length > 0 ? differentPositions[0] : availablePositions[0];
+        if (preferredAvailable.length > 0) {
+          // Pick a preferred position, avoiding the last one played if possible
+          const choices = preferredAvailable.length > 1 && lastPos
+            ? preferredAvailable.filter(p => p !== lastPos)
+            : preferredAvailable;
+          position = choices.length > 0 ? choices[0] : preferredAvailable[0];
+          preferredPlaysCount[playerIdx]++;
+        } else if (nonAntiAvailable.length > 0) {
+          // Pick a non-anti position, avoiding the last one played if possible
+          const choices = nonAntiAvailable.length > 1 && lastPos
+            ? nonAntiAvailable.filter(p => p !== lastPos)
+            : nonAntiAvailable;
+          position = choices.length > 0 ? choices[0] : nonAntiAvailable[0];
         } else {
-          position = availablePositions[0];
+          // Fallback: assign from remaining positions (may include anti-positions)
+          // This only happens if all remaining positions are anti-positions
+          const choices = antiOnly.length > 1 && lastPos
+            ? antiOnly.filter(p => p !== lastPos)
+            : antiOnly;
+          position = choices.length > 0 ? choices[0] : availablePositions[0];
         }
 
         availablePositions.splice(availablePositions.indexOf(position), 1);
@@ -178,7 +222,7 @@ export class PositionAssigner {
     candidates.sort((a, b) => {
       const aDeficit = targetInnings[a] - inningsPlayed[a];
       const bDeficit = targetInnings[b] - inningsPlayed[b];
-      
+
       if (aDeficit !== bDeficit) {
         return bDeficit - aDeficit; // More behind = higher priority
       }

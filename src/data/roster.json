@@ -4,121 +4,161 @@
       "id": "p1",
       "firstName": "John",
       "lastName": "Smith",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["P", "SS"],
+      "antiPositions": ["C"]
     },
     {
       "id": "p2",
       "firstName": "Mike",
       "lastName": "Johnson",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["1B", "3B"],
+      "antiPositions": []
     },
     {
       "id": "p3",
       "firstName": "Dave",
       "lastName": "Williams",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["C"],
+      "antiPositions": ["P"]
     },
     {
       "id": "p4",
       "firstName": "Tom",
       "lastName": "Brown",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["SS", "2B"],
+      "antiPositions": []
     },
     {
       "id": "p5",
       "firstName": "Chris",
       "lastName": "Davis",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["LF", "LCF"],
+      "antiPositions": ["P", "C"]
     },
     {
       "id": "p6",
       "firstName": "Ryan",
       "lastName": "Miller",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["P", "2B"],
+      "antiPositions": []
     },
     {
       "id": "p7",
       "firstName": "Jake",
       "lastName": "Wilson",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["RF", "RCF"],
+      "antiPositions": ["C"]
     },
     {
       "id": "p8",
       "firstName": "Matt",
       "lastName": "Moore",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["3B"],
+      "antiPositions": []
     },
     {
       "id": "p9",
       "firstName": "Alex",
       "lastName": "Taylor",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["LCF", "RCF"],
+      "antiPositions": []
     },
     {
       "id": "p10",
       "firstName": "Brad",
       "lastName": "Anderson",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["1B"],
+      "antiPositions": ["P"]
     },
     {
       "id": "p11",
       "firstName": "Kevin",
       "lastName": "Thomas",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["SS", "3B"],
+      "antiPositions": []
     },
     {
       "id": "p12",
       "firstName": "Steve",
       "lastName": "Jackson",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["LF", "RF"],
+      "antiPositions": ["C"]
     },
     {
       "id": "p13",
       "firstName": "Dan",
       "lastName": "White",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["2B", "SS"],
+      "antiPositions": []
     },
     {
       "id": "p14",
       "firstName": "Paul",
       "lastName": "Harris",
-      "gender": "MALE"
+      "gender": "MALE",
+      "preferredPositions": ["C", "1B"],
+      "antiPositions": []
     },
     {
       "id": "p15",
       "firstName": "Sarah",
       "lastName": "Martin",
-      "gender": "FEMALE"
+      "gender": "FEMALE",
+      "preferredPositions": ["P", "SS"],
+      "antiPositions": []
     },
     {
       "id": "p16",
       "firstName": "Emma",
       "lastName": "Garcia",
-      "gender": "FEMALE"
+      "gender": "FEMALE",
+      "preferredPositions": ["LCF", "RCF"],
+      "antiPositions": ["C"]
     },
     {
       "id": "p17",
       "firstName": "Jessica",
       "lastName": "Martinez",
-      "gender": "FEMALE"
+      "gender": "FEMALE",
+      "preferredPositions": ["2B", "1B"],
+      "antiPositions": []
     },
     {
       "id": "p18",
       "firstName": "Ashley",
       "lastName": "Robinson",
-      "gender": "FEMALE"
+      "gender": "FEMALE",
+      "preferredPositions": ["LF", "RF"],
+      "antiPositions": ["P"]
     },
     {
       "id": "p19",
       "firstName": "Lauren",
       "lastName": "Clark",
-      "gender": "FEMALE"
+      "gender": "FEMALE",
+      "preferredPositions": ["3B", "SS"],
+      "antiPositions": []
     },
     {
       "id": "p20",
       "firstName": "Megan",
       "lastName": "Rodriguez",
-      "gender": "FEMALE"
+      "gender": "FEMALE",
+      "preferredPositions": ["RF", "RCF"],
+      "antiPositions": ["P", "C"]
     }
   ]
 }

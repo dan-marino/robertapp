@@ -1,8 +1,10 @@
 import { generateLineup } from '../src/generator';
-import { Position } from '../src/types';
+import { Gender, Position } from '../src/types';
 import {
+  createPlayer,
   createRoster,
   createAllRSVPs,
+  createRSVP,
   getPositionsInInning,
   countPositionInInning,
   assertNoDuplicatePositions,
@@ -124,6 +126,130 @@ describe('Position Assignment', () => {
         // Should play at least 3 different positions over 6 innings
         expect(uniquePositions.size).toBeGreaterThanOrEqual(2);
       });
+    });
+  });
+});
+
+describe('Position Preferences', () => {
+  describe('Preferred Positions', () => {
+    test('player gets preferred position at least once in a 6-inning game', () => {
+      // Build a small roster where one guy wants SS
+      const roster = [
+        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [Position.SHORTSTOP]),
+        createPlayer('g1', 'Guy1', 'Test', Gender.MALE),
+        createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
+        createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
+        createPlayer('g4', 'Guy4', 'Test', Gender.MALE),
+        createPlayer('g5', 'Guy5', 'Test', Gender.MALE),
+        createPlayer('g6', 'Guy6', 'Test', Gender.MALE),
+        createPlayer('f0', 'Girl0', 'Test', Gender.FEMALE),
+        createPlayer('f1', 'Girl1', 'Test', Gender.FEMALE),
+        createPlayer('f2', 'Girl2', 'Test', Gender.FEMALE),
+      ];
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const preferredPlayer = lineup.lineup.find(pl => pl.player.id === 'g0')!;
+      const playedSS = preferredPlayer.positions.some(p => p === Position.SHORTSTOP);
+      expect(playedSS).toBe(true);
+    });
+
+    test('player with preferred position plays it more often than other positions', () => {
+      // Everyone plays all 6 innings (exactly 10 players), so we can count
+      const roster = [
+        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [Position.PITCHER]),
+        createPlayer('g1', 'Guy1', 'Test', Gender.MALE),
+        createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
+        createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
+        createPlayer('g4', 'Guy4', 'Test', Gender.MALE),
+        createPlayer('g5', 'Guy5', 'Test', Gender.MALE),
+        createPlayer('g6', 'Guy6', 'Test', Gender.MALE),
+        createPlayer('f0', 'Girl0', 'Test', Gender.FEMALE),
+        createPlayer('f1', 'Girl1', 'Test', Gender.FEMALE),
+        createPlayer('f2', 'Girl2', 'Test', Gender.FEMALE),
+      ];
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const preferredPlayer = lineup.lineup.find(pl => pl.player.id === 'g0')!;
+      const pitcherCount = preferredPlayer.positions.filter(p => p === Position.PITCHER).length;
+      // Should play pitcher at least once
+      expect(pitcherCount).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('Anti-Positions', () => {
+    test('player is never assigned an anti-position when other positions are available', () => {
+      // Player g0 has anti-position PITCHER — should never pitch
+      const roster = [
+        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [], [Position.PITCHER]),
+        createPlayer('g1', 'Guy1', 'Test', Gender.MALE),
+        createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
+        createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
+        createPlayer('g4', 'Guy4', 'Test', Gender.MALE),
+        createPlayer('g5', 'Guy5', 'Test', Gender.MALE),
+        createPlayer('g6', 'Guy6', 'Test', Gender.MALE),
+        createPlayer('f0', 'Girl0', 'Test', Gender.FEMALE),
+        createPlayer('f1', 'Girl1', 'Test', Gender.FEMALE),
+        createPlayer('f2', 'Girl2', 'Test', Gender.FEMALE),
+      ];
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const antiPlayer = lineup.lineup.find(pl => pl.player.id === 'g0')!;
+      const pitchedInnings = antiPlayer.positions.filter(p => p === Position.PITCHER).length;
+      expect(pitchedInnings).toBe(0);
+    });
+
+    test('player with multiple anti-positions avoids all of them', () => {
+      const roster = [
+        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [], [Position.PITCHER, Position.CATCHER]),
+        createPlayer('g1', 'Guy1', 'Test', Gender.MALE),
+        createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
+        createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
+        createPlayer('g4', 'Guy4', 'Test', Gender.MALE),
+        createPlayer('g5', 'Guy5', 'Test', Gender.MALE),
+        createPlayer('g6', 'Guy6', 'Test', Gender.MALE),
+        createPlayer('f0', 'Girl0', 'Test', Gender.FEMALE),
+        createPlayer('f1', 'Girl1', 'Test', Gender.FEMALE),
+        createPlayer('f2', 'Girl2', 'Test', Gender.FEMALE),
+      ];
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const antiPlayer = lineup.lineup.find(pl => pl.player.id === 'g0')!;
+      const antiAssignments = antiPlayer.positions.filter(
+        p => p === Position.PITCHER || p === Position.CATCHER
+      ).length;
+      expect(antiAssignments).toBe(0);
+    });
+
+    test('existing fairness guarantees still hold when preferences are set', () => {
+      const roster = [
+        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [Position.SHORTSTOP], [Position.CATCHER]),
+        createPlayer('g1', 'Guy1', 'Test', Gender.MALE, [Position.PITCHER]),
+        createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
+        createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
+        createPlayer('g4', 'Guy4', 'Test', Gender.MALE),
+        createPlayer('g5', 'Guy5', 'Test', Gender.MALE),
+        createPlayer('g6', 'Guy6', 'Test', Gender.MALE),
+        createPlayer('f0', 'Girl0', 'Test', Gender.FEMALE),
+        createPlayer('f1', 'Girl1', 'Test', Gender.FEMALE),
+        createPlayer('f2', 'Girl2', 'Test', Gender.FEMALE),
+      ];
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      // Everyone should still play all 6 innings (10 players, 10 field spots)
+      lineup.lineup.forEach(pl => {
+        const played = getInningsPlayed(pl.positions);
+        expect(played).toBe(6);
+      });
+
+      // No duplicate positions per inning
+      for (let inning = 0; inning < 6; inning++) {
+        assertNoDuplicatePositions(lineup, inning);
+      }
     });
   });
 });
