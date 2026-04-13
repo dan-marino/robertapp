@@ -78,7 +78,7 @@ export default function LineupGrid({ lineup }: Props) {
             <th className="text-left px-3 py-2 font-medium text-gray-600 min-w-36">Name</th>
             <th className="text-center px-3 py-2 font-medium text-gray-600 w-10">Bat</th>
             {INNINGS.map(i => (
-              <th key={i} className="text-center px-3 py-2 font-medium text-gray-600 w-14">Inn {i}</th>
+              <th key={i} className="text-center px-3 py-2 font-medium text-gray-600 w-14">{i}</th>
             ))}
           </tr>
         </thead>
