@@ -1,9 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import { Position } from '@cli/types';
 import type { GameLineup } from '@cli/types';
 
 const INNINGS = [1, 2, 3, 4, 5, 6];
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 // Color by position group
 const POSITION_STYLE: Record<string, string> = {
@@ -25,10 +35,42 @@ interface Props {
 }
 
 export default function LineupGrid({ lineup }: Props) {
-  const guys = lineup.lineup.slice(0, lineup.guysCount);
-  const girls = lineup.lineup.slice(lineup.guysCount);
+  const [players, setPlayers] = useState(lineup.lineup);
+
+  const guys = players.slice(0, lineup.guysCount);
+  const girls = players.slice(lineup.guysCount);
+
+  function shuffleOrder() {
+    const guysShuffled = shuffleArray(guys).map((pl, i) => ({ ...pl, battingOrder: i + 1 }));
+    const girlsShuffled = shuffleArray(girls).map((pl, i) => ({ ...pl, battingOrder: i + 1 }));
+    setPlayers([...guysShuffled, ...girlsShuffled]);
+  }
+
+  function shufflePositions() {
+    const updated = players.map(pl => ({ ...pl, positions: [...pl.positions] }));
+    for (let inning = 0; inning < INNINGS.length; inning++) {
+      const positions = shuffleArray(updated.map(pl => pl.positions[inning]));
+      updated.forEach((pl, idx) => { pl.positions[inning] = positions[idx]; });
+    }
+    setPlayers(updated);
+  }
 
   return (
+    <div>
+      <div className="flex gap-2 mb-3">
+        <button
+          onClick={shuffleOrder}
+          className="text-xs px-3 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium"
+        >
+          Shuffle Order
+        </button>
+        <button
+          onClick={shufflePositions}
+          className="text-xs px-3 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium"
+        >
+          Shuffle Positions
+        </button>
+      </div>
     <div className="overflow-x-auto">
       <table className="text-sm border-collapse w-full">
         <thead>
@@ -47,6 +89,7 @@ export default function LineupGrid({ lineup }: Props) {
           {girls.map(pl => <PlayerRow key={pl.player.id} pl={pl} />)}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
