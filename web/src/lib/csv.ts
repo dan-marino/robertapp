@@ -13,7 +13,7 @@ export function buildCsvString(lineup: GameLineup, game: Game): string {
   const timePart = game.time ? ` ${game.time}` : '';
 
   // Row 1: game title
-  lines.push(`Game ${gameNum} ${dayShort}${timePart} ${dateShort} ${game.opponent},,,,,,,,FINAL`);
+  lines.push(`Game ${gameNum} ${dayShort}${timePart} ${dateShort} ${game.opponent},,,,,,,,,FINAL`);
   // Rows 2-3: scores
   lines.push(',Home');
   lines.push(',Away');
