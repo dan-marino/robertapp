@@ -6,10 +6,17 @@ import { Gender, Position } from '@cli/types';
 import type { Player } from '@cli/types';
 
 const ALL_POSITIONS = Object.values(Position).filter(p => p !== Position.BENCH);
+const SLOT_LABELS = ['1st', '2nd', '3rd'];
 
 interface Props {
   player?: Player;
   onClose: () => void;
+}
+
+function initPreferences(prefs?: Position[][]): Position[][] {
+  const result: Position[][] = [[], [], []];
+  if (prefs) prefs.forEach((group, i) => { if (i < 3) result[i] = [...group]; });
+  return result;
 }
 
 export default function PlayerForm({ player, onClose }: Props) {
@@ -17,17 +24,23 @@ export default function PlayerForm({ player, onClose }: Props) {
   const [firstName, setFirstName] = useState(player?.firstName ?? '');
   const [lastName, setLastName] = useState(player?.lastName ?? '');
   const [gender, setGender] = useState<Gender>(player?.gender ?? Gender.MALE);
-  const [preferred, setPreferred] = useState<Position[]>(player?.preferredPositions ?? []);
+  const [preferences, setPreferences] = useState<Position[][]>(() => initPreferences(player?.preferredPositions));
   const [anti, setAnti] = useState<Position[]>(player?.antiPositions ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  function togglePosition(pos: Position, list: Position[], setList: (v: Position[]) => void, max: number) {
-    if (list.includes(pos)) {
-      setList(list.filter(p => p !== pos));
-    } else if (list.length < max) {
-      setList([...list, pos]);
+  function togglePreference(pos: Position, slotIdx: number) {
+    const next = preferences.map(g => [...g]);
+    if (next[slotIdx].includes(pos)) {
+      next[slotIdx] = next[slotIdx].filter(p => p !== pos);
+    } else {
+      next[slotIdx] = [...next[slotIdx], pos];
     }
+    setPreferences(next);
+  }
+
+  function toggleAnti(pos: Position) {
+    setAnti(prev => prev.includes(pos) ? prev.filter(p => p !== pos) : [...prev, pos]);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -35,7 +48,12 @@ export default function PlayerForm({ player, onClose }: Props) {
     setSaving(true);
     setError('');
 
-    const payload = { firstName, lastName, gender, preferredPositions: preferred, antiPositions: anti };
+    // Trim trailing empty groups
+    let lastNonEmpty = -1;
+    preferences.forEach((g, i) => { if (g.length > 0) lastNonEmpty = i; });
+    const preferredPositions = lastNonEmpty >= 0 ? preferences.slice(0, lastNonEmpty + 1) : [];
+
+    const payload = { firstName, lastName, gender, preferredPositions, antiPositions: anti };
     const url = player ? `/api/players/${player.id}` : '/api/players';
     const method = player ? 'PUT' : 'POST';
 
@@ -60,6 +78,9 @@ export default function PlayerForm({ player, onClose }: Props) {
       setSaving(false);
     }
   }
+
+  // All positions claimed by any preference slot
+  const allClaimed = new Set(preferences.flat());
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -106,23 +127,63 @@ export default function PlayerForm({ player, onClose }: Props) {
         </div>
       </div>
 
-      <PositionPicker
-        label="Preferred Positions"
-        hint="up to 3"
-        selected={preferred}
-        max={3}
-        activeClass="bg-green-100 border-green-400 text-green-800"
-        onToggle={pos => togglePosition(pos, preferred, setPreferred, 3)}
-      />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Preferred Positions <span className="text-gray-400 font-normal">(ranked — positions in the same slot are equally preferred)</span>
+        </label>
+        <div className="space-y-2">
+          {SLOT_LABELS.map((label, slotIdx) => {
+            const selected = preferences[slotIdx];
+            return (
+              <div key={slotIdx} className="flex items-start gap-2">
+                <span className="text-xs font-semibold text-gray-500 w-7 pt-1.5 shrink-0">{label}</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_POSITIONS.map(pos => {
+                    const active = selected.includes(pos);
+                    const taken = !active && allClaimed.has(pos);
+                    return (
+                      <button
+                        key={pos}
+                        type="button"
+                        disabled={taken}
+                        onClick={() => togglePreference(pos, slotIdx)}
+                        className={`px-2.5 py-1 text-xs rounded border font-medium transition-colors
+                          ${active ? 'bg-green-100 border-green-400 text-green-800' : 'bg-white border-gray-300 text-gray-600'}
+                          ${taken ? 'opacity-30 cursor-not-allowed' : 'hover:border-gray-400 cursor-pointer'}`}
+                      >
+                        {pos}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-      <PositionPicker
-        label="Anti-Positions"
-        hint="up to 2, never assigned here"
-        selected={anti}
-        max={2}
-        activeClass="bg-red-100 border-red-400 text-red-800"
-        onToggle={pos => togglePosition(pos, anti, setAnti, 2)}
-      />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Anti-Positions <span className="text-gray-400 font-normal">(never assigned here)</span>
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {ALL_POSITIONS.map(pos => {
+            const active = anti.includes(pos);
+            return (
+              <button
+                key={pos}
+                type="button"
+                onClick={() => toggleAnti(pos)}
+                className={`px-2.5 py-1 text-xs rounded border font-medium transition-colors
+                  ${active ? 'bg-red-100 border-red-400 text-red-800' : 'bg-white border-gray-300 text-gray-600'}
+                  hover:border-gray-400 cursor-pointer`}
+              >
+                {pos}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -143,43 +204,5 @@ export default function PlayerForm({ player, onClose }: Props) {
         </button>
       </div>
     </form>
-  );
-}
-
-function PositionPicker({
-  label, hint, selected, max, activeClass, onToggle,
-}: {
-  label: string;
-  hint: string;
-  selected: Position[];
-  max: number;
-  activeClass: string;
-  onToggle: (pos: Position) => void;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label} <span className="text-gray-400 font-normal">({hint})</span>
-      </label>
-      <div className="flex flex-wrap gap-1.5">
-        {ALL_POSITIONS.map(pos => {
-          const active = selected.includes(pos);
-          const disabled = !active && selected.length >= max;
-          return (
-            <button
-              key={pos}
-              type="button"
-              disabled={disabled}
-              onClick={() => onToggle(pos)}
-              className={`px-2.5 py-1 text-xs rounded border font-medium transition-colors
-                ${active ? activeClass : 'bg-white border-gray-300 text-gray-600'}
-                ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:border-gray-400 cursor-pointer'}`}
-            >
-              {pos}
-            </button>
-          );
-        })}
-      </div>
-    </div>
   );
 }

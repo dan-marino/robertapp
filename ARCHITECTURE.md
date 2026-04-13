@@ -2,7 +2,7 @@
 
 ## Overview
 
-CLI app written in TypeScript. Takes a roster and a list of RSVPs, generates a fair lineup for one game, and outputs a CSV.
+TypeScript monorepo with two layers: a CLI that generates co-ed softball lineups and a Next.js web admin for managing players, RSVPs, and viewing lineups.
 
 ```
 src/
@@ -17,6 +17,36 @@ src/
 │   └── PositionAssigner.ts   # Core fairness + position algorithm
 └── utils/
     └── calculations.ts       # Field composition math
+```
+
+```
+web/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx                    # Root layout + nav
+│   │   ├── page.tsx                      # Home page
+│   │   ├── players/
+│   │   │   └── page.tsx                  # Players list
+│   │   └── games/[id]/
+│   │       ├── rsvp/page.tsx             # RSVP form
+│   │       └── lineup/page.tsx           # Lineup display
+│   ├── api/
+│   │   ├── games/route.ts                # GET season/games
+│   │   ├── games/[id]/lineup/route.ts    # GET generated lineup
+│   │   ├── games/[id]/rsvps/route.ts     # GET/PUT RSVPs
+│   │   ├── players/route.ts              # GET/POST players
+│   │   └── players/[id]/route.ts         # PUT/DELETE player
+│   ├── components/
+│   │   ├── PlayerList.tsx
+│   │   ├── PlayerForm.tsx
+│   │   ├── RsvpTable.tsx
+│   │   ├── LineupGrid.tsx
+│   │   └── DownloadCsvButton.tsx
+│   └── lib/
+│       ├── data.ts                       # JSON read/write helpers
+│       ├── csv.ts                        # CSV formatting
+│       └── utils.ts
+└── __tests__/                            # API + data layer tests
 ```
 
 ## Data flow
@@ -95,13 +125,26 @@ Name,Inn1,Inn2,Inn3,Inn4,Inn5,Inn6
 
 Position codes: `P` `C` `1B` `2B` `3B` `SS` `LF` `LCF` `RCF` `RF` `-` (bench)
 
+## Web admin
+
+**Stack:** Next.js 15, React 19, TypeScript, Tailwind CSS 4.
+
+**Data layer (`web/src/lib/data.ts`):** reads/writes JSON files in `src/data/`, shared with the CLI. Key functions: `readRoster()`, `writeRoster()`, `readSeason()`, `readRsvps(gameId)`, `writeRsvps(gameId)`.
+
+**Pages:**
+- `/players` — list, add, edit, and delete players
+- `/games/[id]/rsvp` — per-game attending/late toggles for every player on the roster
+- `/games/[id]/lineup` — generated lineup table, color-coded by position group, with CSV download
+
+**Lineup generation:** `GET /api/games/[id]/lineup` calls `generateLineup()` from `src/generator.ts` directly, reusing all CLI logic without duplication.
+
 ## Roadmap
 
 The current data layer is temporary. Planned evolution:
 
-| Phase | What |
-|-------|------|
-| Now | CLI + hardcoded JSON |
-| Next | PostgreSQL + Prisma schema |
-| After | Next.js web admin |
-| Later | Deployment (Docker → AWS/GCP) |
+| Phase | What | Status |
+|-------|------|--------|
+| 1 | CLI + hardcoded JSON | Done |
+| 2 | PostgreSQL + Prisma schema | Next |
+| 3 | Next.js web admin | Done |
+| 4 | Deployment (Docker → AWS/GCP) | Later |

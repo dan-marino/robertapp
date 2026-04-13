@@ -59,9 +59,9 @@ export default function PlayerList({ players }: Props) {
                 </span>
               </div>
               <div className="flex gap-1.5 mt-1 flex-wrap">
-                {(p.preferredPositions ?? []).map(pos => (
-                  <span key={pos} className="text-xs bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded">
-                    {pos}
+                {(p.preferredPositions ?? []).map((group, i) => group.length > 0 && (
+                  <span key={i} className="text-xs bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded">
+                    {i + 1}: {group.join('/')}
                   </span>
                 ))}
                 {(p.antiPositions ?? []).map(pos => (
