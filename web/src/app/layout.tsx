@@ -15,19 +15,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-gray-50 text-gray-900">
-        <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-6 overflow-x-auto whitespace-nowrap">
-          <span className="font-semibold text-gray-800">Robertapp</span>
-          <Link href="/players" className="text-sm text-gray-600 hover:text-gray-900">
-            Players
-          </Link>
-          {games.map(g => (
-            <div key={g.id} className="flex items-center gap-3 text-sm text-gray-500">
-              <span className="text-gray-300">|</span>
-              <span>{formatGameDate(g.date, 'short')} vs {g.opponent}</span>
-              <Link href={`/games/${g.id}/rsvp`} className="text-gray-600 hover:text-gray-900">RSVP</Link>
-              <Link href={`/games/${g.id}/lineup`} className="text-gray-600 hover:text-gray-900">Lineup</Link>
-            </div>
-          ))}
+        <nav className="bg-white border-b border-gray-200 flex items-center">
+          <div className="flex items-center gap-6 px-6 py-3 shrink-0">
+            <span className="font-semibold text-gray-800">Robertapp</span>
+            <Link href="/players" className="text-sm text-gray-600 hover:text-gray-900">
+              Players
+            </Link>
+          </div>
+          <div className="flex items-center gap-6 py-3 pr-6 overflow-x-auto whitespace-nowrap">
+            {games.map(g => (
+              <div key={g.id} className="flex items-center gap-3 text-sm text-gray-500">
+                <span className="text-gray-300">|</span>
+                <span>{formatGameDate(g.date, 'short')} vs {g.opponent}</span>
+                <Link href={`/games/${g.id}/rsvp`} className="text-gray-600 hover:text-gray-900">RSVP</Link>
+                <Link href={`/games/${g.id}/lineup`} className="text-gray-600 hover:text-gray-900">Lineup</Link>
+              </div>
+            ))}
+          </div>
         </nav>
         <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
       </body>
