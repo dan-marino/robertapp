@@ -1,25 +1,19 @@
 {
   "season": {
     "id": "s1",
-    "name": "Spring 2025",
-    "year": 2025,
+    "name": "Spring 2026",
+    "year": 2026,
     "rosterIds": [
-      "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10",
-      "p11", "p12", "p13", "p14", "p15", "p16", "p17", "p18", "p19", "p20"
+      "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10",
+      "p11", "p12", "p13", "p17", "p19", "p20", "p1776103384619"
     ]
   },
   "games": [
     {
       "id": "g1",
       "seasonId": "s1",
-      "date": "2025-04-15",
-      "opponent": "The Sluggers"
-    },
-    {
-      "id": "g2",
-      "seasonId": "s1",
-      "date": "2025-04-22",
-      "opponent": "Thunder Bats"
+      "date": "2026-04-13",
+      "opponent": "Swingers 2.0"
     }
   ]
 }
