@@ -22,10 +22,10 @@ export default function PlayerForm({ player, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  function togglePosition(pos: Position, list: Position[], setList: (v: Position[]) => void, max: number) {
+  function togglePosition(pos: Position, list: Position[], setList: (v: Position[]) => void) {
     if (list.includes(pos)) {
       setList(list.filter(p => p !== pos));
-    } else if (list.length < max) {
+    } else {
       setList([...list, pos]);
     }
   }
@@ -108,20 +108,18 @@ export default function PlayerForm({ player, onClose }: Props) {
 
       <PositionPicker
         label="Preferred Positions"
-        hint="up to 3"
+        hint="select any"
         selected={preferred}
-        max={3}
         activeClass="bg-green-100 border-green-400 text-green-800"
-        onToggle={pos => togglePosition(pos, preferred, setPreferred, 3)}
+        onToggle={pos => togglePosition(pos, preferred, setPreferred)}
       />
 
       <PositionPicker
         label="Anti-Positions"
-        hint="up to 2, never assigned here"
+        hint="never assigned here"
         selected={anti}
-        max={2}
         activeClass="bg-red-100 border-red-400 text-red-800"
-        onToggle={pos => togglePosition(pos, anti, setAnti, 2)}
+        onToggle={pos => togglePosition(pos, anti, setAnti)}
       />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -147,12 +145,11 @@ export default function PlayerForm({ player, onClose }: Props) {
 }
 
 function PositionPicker({
-  label, hint, selected, max, activeClass, onToggle,
+  label, hint, selected, activeClass, onToggle,
 }: {
   label: string;
   hint: string;
   selected: Position[];
-  max: number;
   activeClass: string;
   onToggle: (pos: Position) => void;
 }) {
@@ -164,16 +161,14 @@ function PositionPicker({
       <div className="flex flex-wrap gap-1.5">
         {ALL_POSITIONS.map(pos => {
           const active = selected.includes(pos);
-          const disabled = !active && selected.length >= max;
           return (
             <button
               key={pos}
               type="button"
-              disabled={disabled}
               onClick={() => onToggle(pos)}
               className={`px-2.5 py-1 text-xs rounded border font-medium transition-colors
                 ${active ? activeClass : 'bg-white border-gray-300 text-gray-600'}
-                ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:border-gray-400 cursor-pointer'}`}
+                hover:border-gray-400 cursor-pointer`}
             >
               {pos}
             </button>

@@ -25,8 +25,8 @@ export interface Player {
   firstName: string;
   lastName: string;
   gender: Gender;
-  preferredPositions?: Position[]; // 1–3 positions they like to play
-  antiPositions?: Position[];      // 0–2 positions they refuse to play
+  preferredPositions?: Position[]; // positions they like to play
+  antiPositions?: Position[];      // positions they refuse to play
 }
 
 // Season contains roster and games
