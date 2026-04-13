@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-gray-50 text-gray-900">
-        <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-6 flex-wrap">
+        <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-6 overflow-x-auto whitespace-nowrap">
           <span className="font-semibold text-gray-800">Robertapp</span>
           <Link href="/players" className="text-sm text-gray-600 hover:text-gray-900">
             Players
