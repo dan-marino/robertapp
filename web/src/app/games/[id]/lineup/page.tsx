@@ -62,7 +62,7 @@ export default async function LineupPage({ params }: { params: Promise<{ id: str
             {lineup.guysCount} guys · {lineup.girlsCount} girls
           </p>
         </div>
-        <DownloadCsvButton gameId={id} lineup={lineup} />
+        <DownloadCsvButton game={game} lineup={lineup} />
       </div>
       <LineupGrid lineup={lineup} />
     </div>

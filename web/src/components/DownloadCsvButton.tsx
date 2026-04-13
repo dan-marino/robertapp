@@ -1,21 +1,21 @@
 'use client';
 
 import { buildCsvString } from '@/lib/csv';
-import type { GameLineup } from '@cli/types';
+import type { GameLineup, Game } from '@cli/types';
 
 interface Props {
-  gameId: string;
+  game: Game;
   lineup: GameLineup;
 }
 
-export default function DownloadCsvButton({ gameId, lineup }: Props) {
+export default function DownloadCsvButton({ game, lineup }: Props) {
   function handleDownload() {
-    const csv = buildCsvString(lineup);
+    const csv = buildCsvString(lineup, game);
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `lineup-${gameId}.csv`;
+    a.download = `lineup-${game.id}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 100);
   }

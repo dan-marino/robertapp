@@ -1,8 +1,26 @@
-import type { GameLineup, PlayerLineup } from '@cli/types';
+import type { GameLineup, PlayerLineup, Game } from '@cli/types';
 
-export function buildCsvString(lineup: GameLineup): string {
+export function buildCsvString(lineup: GameLineup, game: Game): string {
   const lines: string[] = [];
-  lines.push('Name,Inn1,Inn2,Inn3,Inn4,Inn5,Inn6');
+
+  // Game number from id (e.g. "g1" → 1)
+  const gameNum = game.id.replace(/\D/g, '');
+
+  // Date parts
+  const date = new Date(game.date + 'T12:00:00');
+  const dayShort = date.toLocaleDateString('en-US', { weekday: 'short' }); // "Mon"
+  const dateShort = `${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(2)}`;
+  const timePart = game.time ? ` ${game.time}` : '';
+
+  // Row 1: game title
+  lines.push(`Game ${gameNum} ${dayShort}${timePart} ${dateShort} ${game.opponent},,,,,,,,FINAL`);
+  // Rows 2-3: scores
+  lines.push(',Home');
+  lines.push(',Away');
+  // Row 4: empty separator
+  lines.push('');
+  // Row 5: column headers
+  lines.push('Order,Name,ABs,1,2,3,4,5,6');
 
   const guys = lineup.lineup.slice(0, lineup.guysCount);
   const girls = lineup.lineup.slice(lineup.guysCount);
@@ -15,6 +33,6 @@ export function buildCsvString(lineup: GameLineup): string {
 }
 
 function buildRow(p: PlayerLineup): string {
-  const name = `${p.battingOrder}. ${p.player.firstName} ${p.player.lastName}`;
-  return `${name},${p.positions.join(',')}`;
+  const name = `${p.player.firstName} ${p.player.lastName}`;
+  return `${p.battingOrder},${name},,${p.positions.join(',')}`;
 }
