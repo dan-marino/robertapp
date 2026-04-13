@@ -40,7 +40,7 @@ Run tests before every commit. All 5 suites must pass.
 Player roster lives in `src/data/roster.json`. RSVP data for the sample game is in `src/rsvp.ts`. These are test/sample data — the real data input will eventually come from a database.
 
 Each player can have:
-- `preferredPositions` — any number of positions they like. The algorithm tries to give them at least one per game.
+- `preferredPositions` — up to 3 ranked preference groups (`Position[][]`). Each group is a set of equally-acceptable positions (e.g., `[["P"], ["1B"], ["LF", "LCF"]]`). The algorithm satisfies the highest-rank group with an available position first.
 - `antiPositions` — any number of positions they refuse. The algorithm avoids these and will bench a player rather than force one.
 
 ## What's coming next

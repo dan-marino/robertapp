@@ -5,15 +5,23 @@
       "firstName": "John",
       "lastName": "Smith",
       "gender": "MALE",
-      "preferredPositions": ["P", "SS"],
-      "antiPositions": ["C"]
+      "preferredPositions": [
+        ["P"],
+        ["SS"]
+      ],
+      "antiPositions": [
+        "C"
+      ]
     },
     {
       "id": "p2",
       "firstName": "Mike",
       "lastName": "Johnson",
       "gender": "MALE",
-      "preferredPositions": ["1B", "3B"],
+      "preferredPositions": [
+        ["1B"],
+        ["3B"]
+      ],
       "antiPositions": []
     },
     {
@@ -21,15 +29,22 @@
       "firstName": "Dave",
       "lastName": "Williams",
       "gender": "MALE",
-      "preferredPositions": ["C"],
-      "antiPositions": ["P"]
+      "preferredPositions": [
+        ["C"]
+      ],
+      "antiPositions": [
+        "P"
+      ]
     },
     {
       "id": "p4",
       "firstName": "Tom",
       "lastName": "Brown",
       "gender": "MALE",
-      "preferredPositions": ["SS", "2B"],
+      "preferredPositions": [
+        ["SS"],
+        ["2B"]
+      ],
       "antiPositions": []
     },
     {
@@ -37,15 +52,23 @@
       "firstName": "Chris",
       "lastName": "Davis",
       "gender": "MALE",
-      "preferredPositions": ["LF", "LCF"],
-      "antiPositions": ["P", "C"]
+      "preferredPositions": [
+        ["LF", "LCF"]
+      ],
+      "antiPositions": [
+        "P",
+        "C"
+      ]
     },
     {
       "id": "p6",
       "firstName": "Ryan",
       "lastName": "Miller",
       "gender": "MALE",
-      "preferredPositions": ["P", "2B"],
+      "preferredPositions": [
+        ["P"],
+        ["2B"]
+      ],
       "antiPositions": []
     },
     {
@@ -53,15 +76,21 @@
       "firstName": "Jake",
       "lastName": "Wilson",
       "gender": "MALE",
-      "preferredPositions": ["RF", "RCF"],
-      "antiPositions": ["C"]
+      "preferredPositions": [
+        ["RF", "RCF"]
+      ],
+      "antiPositions": [
+        "C"
+      ]
     },
     {
       "id": "p8",
       "firstName": "Matt",
       "lastName": "Moore",
       "gender": "MALE",
-      "preferredPositions": ["3B"],
+      "preferredPositions": [
+        ["3B"]
+      ],
       "antiPositions": []
     },
     {
@@ -69,7 +98,9 @@
       "firstName": "Alex",
       "lastName": "Taylor",
       "gender": "MALE",
-      "preferredPositions": ["LCF", "RCF"],
+      "preferredPositions": [
+        ["LCF", "RCF"]
+      ],
       "antiPositions": []
     },
     {
@@ -77,15 +108,22 @@
       "firstName": "Brad",
       "lastName": "Anderson",
       "gender": "MALE",
-      "preferredPositions": ["1B"],
-      "antiPositions": ["P"]
+      "preferredPositions": [
+        ["1B"]
+      ],
+      "antiPositions": [
+        "P"
+      ]
     },
     {
       "id": "p11",
       "firstName": "Kevin",
       "lastName": "Thomas",
       "gender": "MALE",
-      "preferredPositions": ["SS", "3B"],
+      "preferredPositions": [
+        ["SS"],
+        ["3B"]
+      ],
       "antiPositions": []
     },
     {
@@ -93,15 +131,22 @@
       "firstName": "Steve",
       "lastName": "Jackson",
       "gender": "MALE",
-      "preferredPositions": ["LF", "RF"],
-      "antiPositions": ["C"]
+      "preferredPositions": [
+        ["LF", "RF"]
+      ],
+      "antiPositions": [
+        "C"
+      ]
     },
     {
       "id": "p13",
       "firstName": "Dan",
       "lastName": "White",
       "gender": "MALE",
-      "preferredPositions": ["2B", "SS"],
+      "preferredPositions": [
+        ["2B"],
+        ["SS"]
+      ],
       "antiPositions": []
     },
     {
@@ -109,7 +154,10 @@
       "firstName": "Paul",
       "lastName": "Harris",
       "gender": "MALE",
-      "preferredPositions": ["C", "1B"],
+      "preferredPositions": [
+        ["C"],
+        ["1B"]
+      ],
       "antiPositions": []
     },
     {
@@ -117,7 +165,10 @@
       "firstName": "Sarah",
       "lastName": "Martin",
       "gender": "FEMALE",
-      "preferredPositions": ["P", "SS"],
+      "preferredPositions": [
+        ["P"],
+        ["SS"]
+      ],
       "antiPositions": []
     },
     {
@@ -125,15 +176,22 @@
       "firstName": "Emma",
       "lastName": "Garcia",
       "gender": "FEMALE",
-      "preferredPositions": ["LCF", "RCF"],
-      "antiPositions": ["C"]
+      "preferredPositions": [
+        ["LCF", "RCF"]
+      ],
+      "antiPositions": [
+        "C"
+      ]
     },
     {
       "id": "p17",
       "firstName": "Jessica",
       "lastName": "Martinez",
       "gender": "FEMALE",
-      "preferredPositions": ["2B", "1B"],
+      "preferredPositions": [
+        ["2B"],
+        ["1B"]
+      ],
       "antiPositions": []
     },
     {
@@ -141,15 +199,22 @@
       "firstName": "Ashley",
       "lastName": "Robinson",
       "gender": "FEMALE",
-      "preferredPositions": ["LF", "RF"],
-      "antiPositions": ["P"]
+      "preferredPositions": [
+        ["LF", "RF"]
+      ],
+      "antiPositions": [
+        "P"
+      ]
     },
     {
       "id": "p19",
       "firstName": "Lauren",
       "lastName": "Clark",
       "gender": "FEMALE",
-      "preferredPositions": ["3B", "SS"],
+      "preferredPositions": [
+        ["3B"],
+        ["SS"]
+      ],
       "antiPositions": []
     },
     {
@@ -157,8 +222,13 @@
       "firstName": "Megan",
       "lastName": "Rodriguez",
       "gender": "FEMALE",
-      "preferredPositions": ["RF", "RCF"],
-      "antiPositions": ["P", "C"]
+      "preferredPositions": [
+        ["RF", "RCF"]
+      ],
+      "antiPositions": [
+        "P",
+        "C"
+      ]
     }
   ]
 }

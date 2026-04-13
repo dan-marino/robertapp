@@ -65,7 +65,7 @@ function SectionHeader({ label, count, color }: { label: string; count: number; 
 }
 
 function PlayerRow({ pl }: { pl: GameLineup['lineup'][0] }) {
-  const preferred = pl.player.preferredPositions ?? [];
+  const preferredGroups = pl.player.preferredPositions ?? [];
   const anti = pl.player.antiPositions ?? [];
 
   return (
@@ -76,7 +76,7 @@ function PlayerRow({ pl }: { pl: GameLineup['lineup'][0] }) {
       <td className="px-3 py-1.5 text-center text-gray-500">{pl.battingOrder}</td>
       {pl.positions.map((pos, i) => {
         const isBench = pos === Position.BENCH;
-        const isPreferred = preferred.includes(pos as Position);
+        const isPreferred = preferredGroups.some(group => group.includes(pos as Position));
         const isAnti = anti.includes(pos as Position);
 
         let cellClass = POSITION_STYLE[pos] ?? 'bg-gray-50 text-gray-500';

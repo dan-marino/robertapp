@@ -13,7 +13,7 @@ export function createPlayer(
   firstName: string,
   lastName: string,
   gender: Gender,
-  preferredPositions?: Position[],
+  preferredPositions?: Position[][],
   antiPositions?: Position[]
 ): Player {
   return { id, firstName, lastName, gender, preferredPositions, antiPositions };

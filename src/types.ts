@@ -25,7 +25,7 @@ export interface Player {
   firstName: string;
   lastName: string;
   gender: Gender;
-  preferredPositions?: Position[]; // positions they like to play
+  preferredPositions?: Position[][]; // ranked preference groups (up to 3); each group is a set of equally-acceptable positions
   antiPositions?: Position[];      // positions they refuse to play
 }
 
