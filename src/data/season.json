@@ -14,6 +14,46 @@
       "seasonId": "s1",
       "date": "2026-04-13",
       "opponent": "Swingers 2.0"
+    },
+    {
+      "id": "g2",
+      "seasonId": "s1",
+      "date": "2026-04-20",
+      "time": "7:30pm",
+      "location": "Queensbridge",
+      "opponent": "Bunt Cakes"
+    },
+    {
+      "id": "g3",
+      "seasonId": "s1",
+      "date": "2026-04-27",
+      "time": "7:00pm",
+      "location": "Queensbridge",
+      "opponent": "Bob's Baseball Club"
+    },
+    {
+      "id": "g4",
+      "seasonId": "s1",
+      "date": "2026-05-04",
+      "time": "7:20pm",
+      "location": "Queensbridge",
+      "opponent": "NATO"
+    },
+    {
+      "id": "g5",
+      "seasonId": "s1",
+      "date": "2026-05-11",
+      "time": "7:20pm",
+      "location": "Queensbridge",
+      "opponent": "Cute Buddies"
+    },
+    {
+      "id": "g6",
+      "seasonId": "s1",
+      "date": "2026-05-18",
+      "time": "7:30pm",
+      "location": "Queensbridge",
+      "opponent": "The Retro-Commiss..."
     }
   ]
 }
