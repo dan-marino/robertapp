@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Added
+- Next.js 15 web admin at `web/` (React 19, Tailwind CSS 4)
+- Player management: list, add, edit, and delete players via `/players` page and REST API
+- RSVP management: per-game attending/late toggles via `/games/[id]/rsvp` and `PUT /api/games/[id]/rsvps`
+- Lineup visualization: color-coded position grid at `/games/[id]/lineup`, reusing `generateLineup()` from CLI
+- CSV download button in lineup view for direct Google Sheets import
+- File-system data layer (`web/src/lib/data.ts`) reading/writing shared JSON files in `src/data/`
+- Jest tests for all API routes and data layer (`web/__tests__/`)
 - `preferredPositions` and `antiPositions` fields on `Player` type
 - Position preference logic in `PositionAssigner`: players with unmet preferred positions get first pick each inning
 - Anti-position avoidance: player is never assigned a refused position when alternatives exist

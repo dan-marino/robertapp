@@ -339,6 +339,28 @@
         "RF"
       ],
       "id": "p1776103384619"
+    },
+    {
+      "firstName": "Dan",
+      "lastName": "Marino",
+      "gender": "MALE",
+      "preferredPositions": [
+        [
+          "P"
+        ],
+        [
+          "RCF"
+        ],
+        [
+          "SS",
+          "3B",
+          "1B"
+        ]
+      ],
+      "antiPositions": [
+        "RF"
+      ],
+      "id": "p1776103618108"
     }
   ]
 }
