@@ -128,8 +128,8 @@ export class PositionAssigner {
         const bPlayer = this.allPlayers[bIdx];
         const aPreferred = aPlayer.player.preferredPositions ?? [];
         const bPreferred = bPlayer.player.preferredPositions ?? [];
-        const aHasPreferred = aPreferred.some(p => availablePositions.includes(p));
-        const bHasPreferred = bPreferred.some(p => availablePositions.includes(p));
+        const aHasPreferred = aPreferred.some(group => group.some(p => availablePositions.includes(p)));
+        const bHasPreferred = bPreferred.some(group => group.some(p => availablePositions.includes(p)));
 
         if (aHasPreferred && !bHasPreferred) return -1;
         if (!aHasPreferred && bHasPreferred) return 1;
@@ -142,14 +142,24 @@ export class PositionAssigner {
         if (availablePositions.length === 0) return;
 
         const player = this.allPlayers[playerIdx];
-        const preferred = player.player.preferredPositions ?? [];
+        const preferredGroups = player.player.preferredPositions ?? [];
         const anti = player.player.antiPositions ?? [];
         const lastPos = lastPosition.get(playerIdx);
 
-        // Build pools in priority order
-        const preferredAvailable = availablePositions.filter(p => preferred.includes(p));
+        // Find the highest-rank preference group that has available positions
+        let preferredAvailable: Position[] = [];
+        for (const group of preferredGroups) {
+          const available = availablePositions.filter(p => group.includes(p));
+          if (available.length > 0) {
+            preferredAvailable = available;
+            break;
+          }
+        }
+
+        // All preferred positions (any rank) for filtering non-anti pool
+        const allPreferred = preferredGroups.flat();
         const nonAntiAvailable = availablePositions.filter(
-          p => !anti.includes(p) && !preferred.includes(p)
+          p => !anti.includes(p) && !allPreferred.includes(p)
         );
         const antiOnly = availablePositions.filter(p => anti.includes(p));
 

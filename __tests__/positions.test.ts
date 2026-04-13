@@ -135,7 +135,7 @@ describe('Position Preferences', () => {
     test('player gets preferred position at least once in a 6-inning game', () => {
       // Build a small roster where one guy wants SS
       const roster = [
-        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [Position.SHORTSTOP]),
+        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [[Position.SHORTSTOP]]),
         createPlayer('g1', 'Guy1', 'Test', Gender.MALE),
         createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
         createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
@@ -157,7 +157,7 @@ describe('Position Preferences', () => {
     test('player with preferred position plays it more often than other positions', () => {
       // Everyone plays all 6 innings (exactly 10 players), so we can count
       const roster = [
-        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [Position.PITCHER]),
+        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [[Position.PITCHER]]),
         createPlayer('g1', 'Guy1', 'Test', Gender.MALE),
         createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
         createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
@@ -226,8 +226,8 @@ describe('Position Preferences', () => {
 
     test('existing fairness guarantees still hold when preferences are set', () => {
       const roster = [
-        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [Position.SHORTSTOP], [Position.CATCHER]),
-        createPlayer('g1', 'Guy1', 'Test', Gender.MALE, [Position.PITCHER]),
+        createPlayer('g0', 'Guy0', 'Test', Gender.MALE, [[Position.SHORTSTOP]], [Position.CATCHER]),
+        createPlayer('g1', 'Guy1', 'Test', Gender.MALE, [[Position.PITCHER]]),
         createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
         createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
         createPlayer('g4', 'Guy4', 'Test', Gender.MALE),
