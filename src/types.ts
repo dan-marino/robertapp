@@ -43,6 +43,7 @@ export interface Game {
   seasonId: string;
   date: string; // ISO date string
   time?: string; // e.g. "6:30pm"
+  location?: string; // e.g. "Queensbridge"
   opponent: string;
   homeScore?: number;
   awayScore?: number;
