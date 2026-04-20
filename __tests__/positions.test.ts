@@ -253,3 +253,86 @@ describe('Position Preferences', () => {
     });
   });
 });
+
+describe('Anti-Position Priority', () => {
+  test('anti-position player avoids violation when preferred pitcher competes', () => {
+    // g0 has antiPosition PITCHER; g1 wants PITCHER as preferred.
+    // g0 should pick first each inning and never end up as PITCHER.
+    const roster = [
+      createPlayer('g0', 'AntiPitch', 'Test', Gender.MALE, [], [Position.PITCHER]),
+      createPlayer('g1', 'WantsPitch', 'Test', Gender.MALE, [[Position.PITCHER]]),
+      createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
+      createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
+      createPlayer('g4', 'Guy4', 'Test', Gender.MALE),
+      createPlayer('g5', 'Guy5', 'Test', Gender.MALE),
+      createPlayer('g6', 'Guy6', 'Test', Gender.MALE),
+      createPlayer('f0', 'Girl0', 'Test', Gender.FEMALE),
+      createPlayer('f1', 'Girl1', 'Test', Gender.FEMALE),
+      createPlayer('f2', 'Girl2', 'Test', Gender.FEMALE),
+    ];
+    const rsvps = createAllRSVPs(roster);
+    const lineup = generateLineup(rsvps, roster);
+
+    const antiPlayer = lineup.lineup.find(pl => pl.player.id === 'g0')!;
+    const assignedPitcher = antiPlayer.positions.some(p => p === Position.PITCHER);
+    expect(assignedPitcher).toBe(false);
+  });
+
+  test('players without anti-positions still get their preferred positions honored', () => {
+    // No anti-positions set — preferred-position logic should still work as before.
+    const roster = [
+      createPlayer('g0', 'WantsSS', 'Test', Gender.MALE, [[Position.SHORTSTOP]]),
+      createPlayer('g1', 'Guy1', 'Test', Gender.MALE),
+      createPlayer('g2', 'Guy2', 'Test', Gender.MALE),
+      createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
+      createPlayer('g4', 'Guy4', 'Test', Gender.MALE),
+      createPlayer('g5', 'Guy5', 'Test', Gender.MALE),
+      createPlayer('g6', 'Guy6', 'Test', Gender.MALE),
+      createPlayer('f0', 'Girl0', 'Test', Gender.FEMALE),
+      createPlayer('f1', 'Girl1', 'Test', Gender.FEMALE),
+      createPlayer('f2', 'Girl2', 'Test', Gender.FEMALE),
+    ];
+    const rsvps = createAllRSVPs(roster);
+    const lineup = generateLineup(rsvps, roster);
+
+    const preferredPlayer = lineup.lineup.find(pl => pl.player.id === 'g0')!;
+    const playedSS = preferredPlayer.positions.some(p => p === Position.SHORTSTOP);
+    expect(playedSS).toBe(true);
+  });
+
+  test('regression: all existing anti-position behavior is preserved', () => {
+    // Full roster with mixed anti/preferred settings — core invariants must hold.
+    const roster = [
+      createPlayer('g0', 'AntiC', 'Test', Gender.MALE, [], [Position.CATCHER]),
+      createPlayer('g1', 'AntiP', 'Test', Gender.MALE, [], [Position.PITCHER]),
+      createPlayer('g2', 'WantsP', 'Test', Gender.MALE, [[Position.PITCHER]]),
+      createPlayer('g3', 'Guy3', 'Test', Gender.MALE),
+      createPlayer('g4', 'Guy4', 'Test', Gender.MALE),
+      createPlayer('g5', 'Guy5', 'Test', Gender.MALE),
+      createPlayer('g6', 'Guy6', 'Test', Gender.MALE),
+      createPlayer('f0', 'Girl0', 'Test', Gender.FEMALE),
+      createPlayer('f1', 'Girl1', 'Test', Gender.FEMALE),
+      createPlayer('f2', 'Girl2', 'Test', Gender.FEMALE),
+    ];
+    const rsvps = createAllRSVPs(roster);
+    const lineup = generateLineup(rsvps, roster);
+
+    // Anti-position players are never forced into their anti-positions
+    const antiCatcher = lineup.lineup.find(pl => pl.player.id === 'g0')!;
+    expect(antiCatcher.positions.some(p => p === Position.CATCHER)).toBe(false);
+
+    const antiPitcher = lineup.lineup.find(pl => pl.player.id === 'g1')!;
+    expect(antiPitcher.positions.some(p => p === Position.PITCHER)).toBe(false);
+
+    // No duplicate positions in any inning
+    for (let inning = 0; inning < 6; inning++) {
+      assertNoDuplicatePositions(lineup, inning);
+    }
+
+    // Everyone still plays all 6 innings (exactly 10-player roster)
+    lineup.lineup.forEach(pl => {
+      const played = getInningsPlayed(pl.positions);
+      expect(played).toBe(6);
+    });
+  });
+});

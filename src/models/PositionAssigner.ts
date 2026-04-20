@@ -124,6 +124,14 @@ export class PositionAssigner {
 
       // Sort candidates so those with unmet preferred positions get first pick
       playersThisInning.sort((aIdx, bIdx) => {
+        // Anti-position players pick first — they need to avoid their anti-positions
+        // before preferred-seeking players claim all the good spots.
+        const aHasAnti = (this.allPlayers[aIdx].player.antiPositions?.length ?? 0) > 0;
+        const bHasAnti = (this.allPlayers[bIdx].player.antiPositions?.length ?? 0) > 0;
+        if (aHasAnti && !bHasAnti) return -1;
+        if (!aHasAnti && bHasAnti) return 1;
+        // fall through to existing preferred-position logic
+
         const aPlayer = this.allPlayers[aIdx];
         const bPlayer = this.allPlayers[bIdx];
         const aPreferred = aPlayer.player.preferredPositions ?? [];
