@@ -126,6 +126,66 @@ describe('Fair Playing Time', () => {
     });
   });
 
+  describe('Extra Innings Distribution', () => {
+    test('no extra innings: all guys have the same target innings', () => {
+      // 9 guys, 5 girls: guysPerInning=7, 7*6=42, 42%9=6 → 6 guys get 5, 3 guys get 4
+      // Use 14 guys where 42%14=0 — perfect division, no extra
+      const roster = createRoster(14, 4);
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const guysInnings = lineup.lineup
+        .slice(0, lineup.guysCount)
+        .map(p => getInningsPlayed(p.positions));
+
+      const first = guysInnings[0];
+      const last = guysInnings[guysInnings.length - 1];
+      expect(first).toBe(last);
+      assertFairPlayingTime(lineup, 1);
+    });
+
+    test('extra innings go to last guys in batting order, not first', () => {
+      // 10 guys, 5 girls: guysPerInning=7, 7*6=42, 42%10=2
+      // So 2 guys get base+1 innings; with the fix they must be the LAST 2 in batting order
+      const roster = createRoster(10, 5);
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const guysInnings = lineup.lineup
+        .slice(0, lineup.guysCount)
+        .map(p => getInningsPlayed(p.positions));
+
+      const baseInnings = Math.min(...guysInnings);
+      const extraInnings = baseInnings + 1;
+
+      // Collect indices with the extra inning
+      const extraIndices = guysInnings
+        .map((innings, idx) => ({ innings, idx }))
+        .filter(({ innings }) => innings === extraInnings)
+        .map(({ idx }) => idx);
+
+      // Collect indices with the base inning
+      const baseIndices = guysInnings
+        .map((innings, idx) => ({ innings, idx }))
+        .filter(({ innings }) => innings === baseInnings)
+        .map(({ idx }) => idx);
+
+      if (extraIndices.length > 0 && baseIndices.length > 0) {
+        // Every player with extra innings must have a higher index than every player with base innings
+        const maxBaseIdx = Math.max(...baseIndices);
+        const minExtraIdx = Math.min(...extraIndices);
+        expect(minExtraIdx).toBeGreaterThan(maxBaseIdx);
+      }
+    });
+
+    test('regression: extra innings distribution still satisfies ±1 fairness', () => {
+      const roster = createRoster(10, 5);
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+      assertFairPlayingTime(lineup, 1);
+    });
+  });
+
   describe('Edge Case Fairness', () => {
     test('fairness with uneven division (14 guys, 42 spot-innings)', () => {
       const roster = createRoster(14, 4);

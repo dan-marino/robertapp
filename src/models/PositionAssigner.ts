@@ -64,7 +64,7 @@ export class PositionAssigner {
     const guysExtra = guysTotalSpots % this.numGuys;
 
     for (let i = 0; i < this.numGuys; i++) {
-      targets.push(guysBase + (i < guysExtra ? 1 : 0));
+      targets.push(guysBase + (guysExtra > 0 && i >= this.numGuys - guysExtra ? 1 : 0));
     }
 
     // Girls get girlsPerInning spots per inning
@@ -73,7 +73,7 @@ export class PositionAssigner {
     const girlsExtra = girlsTotalSpots % this.numGirls;
 
     for (let i = 0; i < this.numGirls; i++) {
-      targets.push(girlsBase + (i < girlsExtra ? 1 : 0));
+      targets.push(girlsBase + (girlsExtra > 0 && i >= this.numGirls - girlsExtra ? 1 : 0));
     }
 
     return targets;

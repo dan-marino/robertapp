@@ -65,7 +65,7 @@ export function assignTargetInnings(
   numPlayers: number,
   distribution: PlayingTimeDistribution
 ): number[] {
-  return Array.from({ length: numPlayers }, (_, idx) => 
-    distribution.baseInnings + (idx < distribution.playersWithExtra ? 1 : 0)
+  return Array.from({ length: numPlayers }, (_, idx) =>
+    distribution.baseInnings + (distribution.playersWithExtra > 0 && idx >= numPlayers - distribution.playersWithExtra ? 1 : 0)
   );
 }
