@@ -228,8 +228,26 @@ export class PositionAssigner {
       candidates.push(player.globalIdx);
     }
 
+    // Compute slack per candidate: how many more innings can this player afford to sit?
+    // totalRemainingInnings includes the current inning as a play opportunity.
+    // slack === 0 means the player MUST play this inning or they can't reach their target.
+    const totalRemainingInnings = this.innings - currentInning;
+    const slackMap = new Map<number, number>();
+    for (const idx of candidates) {
+      const remainingTarget = targetInnings[idx] - inningsPlayed[idx];
+      slackMap.set(idx, totalRemainingInnings - remainingTarget);
+    }
+
     // Sort by priority
     candidates.sort((a, b) => {
+      const aSlack = slackMap.get(a)!;
+      const bSlack = slackMap.get(b)!;
+
+      // Primary tier: slack ascending (must-play players first)
+      if (aSlack !== bSlack) {
+        return aSlack - bSlack;
+      }
+
       const aDeficit = targetInnings[a] - inningsPlayed[a];
       const bDeficit = targetInnings[b] - inningsPlayed[b];
 

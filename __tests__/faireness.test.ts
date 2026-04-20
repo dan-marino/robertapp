@@ -1,4 +1,5 @@
 import { generateLineup } from '../src/generator';
+import { Position } from '../src/types';
 import {
   createRoster,
   createAllRSVPs,
@@ -179,6 +180,121 @@ describe('Fair Playing Time', () => {
     });
 
     test('regression: extra innings distribution still satisfies ±1 fairness', () => {
+      const roster = createRoster(10, 5);
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+      assertFairPlayingTime(lineup, 1);
+    });
+  });
+
+  describe('Early Bench Scheduling (slack-based)', () => {
+    // Roster: 8 guys, 5 girls.
+    // calculateFieldComposition(8, 5) → guysOnField=7, girlsOnField=3
+    // guysTotalSpots = 7 * 6 = 42; base = floor(42/8) = 5; extra = 42 % 8 = 2
+    // With R1: first 6 guys get target 5, last 2 guys get target 6.
+    // slack = totalRemainingInnings - remainingTarget.
+    // In inning 0: target-6 guys have slack=0 (must play), target-5 guys have slack=1.
+    // Since 7 spots are needed and 8 guys are eligible, exactly 1 target-5 guy sits in inning 0.
+    // That guy is the last one in the candidate list (highest-index target-5 player).
+
+    test('at least one target-5 player sits in inning 1 (index 0)', () => {
+      // In inning 0, target-6 guys have slack=0 (must play) and fill 2 spots.
+      // The 5 remaining spots go to the first 5 target-5 guys; the 6th target-5 guy sits.
+      const roster = createRoster(8, 5);
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const target5Players = lineup.lineup
+        .slice(0, lineup.guysCount)
+        .filter(p => getInningsPlayed(p.positions) === 5);
+
+      expect(target5Players.length).toBeGreaterThan(0);
+
+      // At least one target-5 player should have their bench in inning 1 (index 0)
+      const anyBenchInInning0 = target5Players.some(p => p.positions[0] === Position.BENCH);
+      expect(anyBenchInInning0).toBe(true);
+    });
+
+    test('must-play players (slack=0) never sit when there are enough spots', () => {
+      // Target-6 guys have slack=0 every inning and must always play.
+      // With 8 guys, 5 girls: last 2 guys get target-6.
+      const roster = createRoster(8, 5);
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const target6Players = lineup.lineup
+        .slice(0, lineup.guysCount)
+        .filter(p => getInningsPlayed(p.positions) === 6);
+
+      expect(target6Players.length).toBeGreaterThan(0);
+
+      target6Players.forEach(p => {
+        const hasBench = p.positions.some(pos => pos === Position.BENCH);
+        expect(hasBench).toBe(false);
+      });
+    });
+
+    test('target-5 players sit before the game is half over (bench not all in last innings)', () => {
+      // In a 6-inning game with 8 guys (6 have target-5), bench slots happen throughout.
+      // The slack sort ensures that in each inning, the player with the highest slack
+      // (most room to sit) gets deprioritized. Over 6 innings, bench slots are spread
+      // across all innings rather than piling up at the end.
+      const roster = createRoster(8, 5);
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const target5Players = lineup.lineup
+        .slice(0, lineup.guysCount)
+        .filter(p => getInningsPlayed(p.positions) === 5);
+
+      expect(target5Players.length).toBeGreaterThan(0);
+
+      // Verify bench slots are distributed: not all target-5 players sit in the last 2 innings
+      const benchInLast2Innings = target5Players.filter(
+        p => p.positions[4] === Position.BENCH || p.positions[5] === Position.BENCH
+      );
+      // At most 2 players should be sitting in the last 2 innings (fair distribution)
+      expect(benchInLast2Innings.length).toBeLessThanOrEqual(2);
+    });
+
+    test('target-4 players sit in early innings', () => {
+      // Roster: 10 guys, 5 girls.
+      // guysOnField=7; guysTotalSpots=42; base=4; extra=2
+      // With R1: first 8 guys get target-4 (need to sit twice), last 2 get target-5 (sit once).
+      // Target-4 guys have higher slack (2) in inning 0 vs target-5 guys (slack=1).
+      // So target-4 guys are deprioritized first — they sit earliest.
+      const roster = createRoster(10, 5);
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+
+      const target4Players = lineup.lineup
+        .slice(0, lineup.guysCount)
+        .filter(p => getInningsPlayed(p.positions) === 4);
+
+      expect(target4Players.length).toBeGreaterThan(0);
+
+      // Each target-4 player needs to sit twice. At least one of their bench innings
+      // should be in the first half of the game (innings 1-3, indices 0-2).
+      target4Players.forEach(p => {
+        const benchInnings = p.positions.reduce<number[]>(
+          (acc, pos, idx) => (pos === Position.BENCH ? [...acc, idx] : acc),
+          []
+        );
+        expect(benchInnings.length).toBe(2);
+        // At least one bench inning must be in innings 1-3 (indices 0-2)
+        const anyBenchInFirstHalf = benchInnings.some(idx => idx <= 2);
+        expect(anyBenchInFirstHalf).toBe(true);
+      });
+    });
+
+    test('regression: assertFairPlayingTime() still passes with slack-based scheduling (8 guys, 5 girls)', () => {
+      const roster = createRoster(8, 5);
+      const rsvps = createAllRSVPs(roster);
+      const lineup = generateLineup(rsvps, roster);
+      assertFairPlayingTime(lineup, 1);
+    });
+
+    test('regression: assertFairPlayingTime() still passes with slack-based scheduling (10 guys, 5 girls)', () => {
       const roster = createRoster(10, 5);
       const rsvps = createAllRSVPs(roster);
       const lineup = generateLineup(rsvps, roster);
