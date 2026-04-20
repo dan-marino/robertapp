@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- **Unified batting lineup mode** — set `"lineupMode": "unified"` on a game in `src/data/season.json` to merge guys and girls into a single numbered batting order. Omitting the field defaults to `"split"` (existing behavior unchanged). Placement rules in unified mode: no girl leadoff, no more than 3 consecutive guys, last batter is a girl when mathematically possible, girls distributed as evenly as possible. Web UI shows female rows with a pink background tint; CSV exports a single section with no separator row.
 - Next.js 15 web admin at `web/` (React 19, Tailwind CSS 4)
 - Player management: list, add, edit, and delete players via `/players` page and REST API
 - RSVP management: per-game attending/late toggles via `/games/[id]/rsvp` and `PUT /api/games/[id]/rsvps`
