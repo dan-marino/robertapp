@@ -43,6 +43,7 @@ export class LineupBuilder {
       lineup: [...guysLineup, ...girlsLineup],
       guysCount: guysLineup.length,
       girlsCount: girlsLineup.length,
+      lineupMode: 'split',
     };
   }
 

@@ -1,5 +1,7 @@
 // Core data types for softball lineup generator
 
+export type LineupMode = 'split' | 'unified';
+
 export enum Gender {
   MALE = 'MALE',
   FEMALE = 'FEMALE'
@@ -47,6 +49,7 @@ export interface Game {
   opponent: string;
   homeScore?: number;
   awayScore?: number;
+  lineupMode?: LineupMode; // 'split' (default) | 'unified'
 }
 
 // RSVP for a specific game
@@ -55,11 +58,12 @@ export interface RSVP {
   isLate: boolean; // If true, sits inning 1 and placed in bottom 20% of lineup
 }
 
-// The generated lineup for one game - single array, guys first, then girls
+// The generated lineup for one game - single array, guys first, then girls (split) or interleaved (unified)
 export interface GameLineup {
-  lineup: PlayerLineup[]; // Guys first, then girls (with batting order reset)
-  guysCount: number; // Where to split for display
+  lineup: PlayerLineup[];
+  guysCount: number;
   girlsCount: number;
+  lineupMode: LineupMode;
 }
 
 // One player's full game assignment
