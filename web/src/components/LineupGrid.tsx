@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Position } from '@cli/types';
+import { Position, Gender } from '@cli/types';
 import type { GameLineup } from '@cli/types';
+import { intersperseBattingOrder } from '@cli/utils/intersperse';
 
 const INNINGS = [1, 2, 3, 4, 5, 6];
 
@@ -37,13 +38,41 @@ interface Props {
 export default function LineupGrid({ lineup }: Props) {
   const [players, setPlayers] = useState(lineup.lineup);
 
-  const guys = players.slice(0, lineup.guysCount);
-  const girls = players.slice(lineup.guysCount);
+  const isUnified = lineup.lineupMode === 'unified';
+
+  // For split mode: guys are first guysCount entries, girls are the rest
+  const guys = isUnified
+    ? players.filter(pl => pl.player.gender === Gender.MALE)
+    : players.slice(0, lineup.guysCount);
+  const girls = isUnified
+    ? players.filter(pl => pl.player.gender === Gender.FEMALE)
+    : players.slice(lineup.guysCount);
 
   function shuffleOrder() {
-    const guysShuffled = shuffleArray(guys).map((pl, i) => ({ ...pl, battingOrder: i + 1 }));
-    const girlsShuffled = shuffleArray(girls).map((pl, i) => ({ ...pl, battingOrder: i + 1 }));
-    setPlayers([...guysShuffled, ...girlsShuffled]);
+    const guysShuffled = shuffleArray(guys);
+    const girlsShuffled = shuffleArray(girls);
+
+    if (isUnified) {
+      // Re-run intersperse to maintain placement rules, then assign unified batting order
+      const merged = intersperseBattingOrder(
+        guysShuffled.map(pl => ({ player: pl.player, isLate: false, inningsPlayed: 0 })),
+        girlsShuffled.map(pl => ({ player: pl.player, isLate: false, inningsPlayed: 0 }))
+      );
+      // Restore positions from the current players array
+      const positionsById = new Map(players.map(pl => [pl.player.id, pl.positions]));
+      setPlayers(
+        merged.map((p, i) => ({
+          player: p.player,
+          battingOrder: i + 1,
+          positions: positionsById.get(p.player.id)!,
+        }))
+      );
+    } else {
+      setPlayers([
+        ...guysShuffled.map((pl, i) => ({ ...pl, battingOrder: i + 1 })),
+        ...girlsShuffled.map((pl, i) => ({ ...pl, battingOrder: i + 1 })),
+      ]);
+    }
   }
 
   function shufflePositions() {
@@ -83,10 +112,24 @@ export default function LineupGrid({ lineup }: Props) {
           </tr>
         </thead>
         <tbody>
-          <SectionHeader label="Guys" count={guys.length} color="blue" />
-          {guys.map(pl => <PlayerRow key={pl.player.id} pl={pl} />)}
-          <SectionHeader label="Girls" count={girls.length} color="pink" />
-          {girls.map(pl => <PlayerRow key={pl.player.id} pl={pl} />)}
+          {isUnified ? (
+            // Unified mode: single section, female rows tinted pink
+            players.map(pl => (
+              <PlayerRow
+                key={pl.player.id}
+                pl={pl}
+                rowClass={pl.player.gender === Gender.FEMALE ? 'bg-pink-50' : undefined}
+              />
+            ))
+          ) : (
+            // Split mode: two sections with headers
+            <>
+              <SectionHeader label="Guys" count={guys.length} color="blue" />
+              {guys.map(pl => <PlayerRow key={pl.player.id} pl={pl} />)}
+              <SectionHeader label="Girls" count={girls.length} color="pink" />
+              {girls.map(pl => <PlayerRow key={pl.player.id} pl={pl} />)}
+            </>
+          )}
         </tbody>
       </table>
     </div>
@@ -107,12 +150,12 @@ function SectionHeader({ label, count, color }: { label: string; count: number; 
   );
 }
 
-function PlayerRow({ pl }: { pl: GameLineup['lineup'][0] }) {
+function PlayerRow({ pl, rowClass }: { pl: GameLineup['lineup'][0]; rowClass?: string }) {
   const preferredGroups = pl.player.preferredPositions ?? [];
   const anti = pl.player.antiPositions ?? [];
 
   return (
-    <tr className="border-t border-gray-100 hover:bg-gray-50">
+    <tr className={`border-t border-gray-100 hover:bg-gray-50 ${rowClass ?? ''}`}>
       <td className="px-3 py-1.5 font-medium">
         {pl.player.firstName} {pl.player.lastName}
       </td>
