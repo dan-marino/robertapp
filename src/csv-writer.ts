@@ -18,19 +18,19 @@ export class CSVWriter {
   generate(): string {
     const lines: string[] = [];
 
-    // Header row
     lines.push(this.buildHeader());
 
-    // Guys lineup
-    const guysLineup = this.lineup.lineup.slice(0, this.lineup.guysCount);
-    lines.push(...this.buildPlayerRows(guysLineup));
-
-    // Empty row separator
-    lines.push('');
-
-    // Girls lineup
-    const girlsLineup = this.lineup.lineup.slice(this.lineup.guysCount);
-    lines.push(...this.buildPlayerRows(girlsLineup));
+    if (this.lineup.lineupMode === 'unified') {
+      // Single continuous list — no section separator
+      lines.push(...this.buildPlayerRows(this.lineup.lineup));
+    } else {
+      // Split mode: guys section, blank row, girls section
+      const guysLineup = this.lineup.lineup.slice(0, this.lineup.guysCount);
+      lines.push(...this.buildPlayerRows(guysLineup));
+      lines.push('');
+      const girlsLineup = this.lineup.lineup.slice(this.lineup.guysCount);
+      lines.push(...this.buildPlayerRows(girlsLineup));
+    }
 
     return lines.join('\n');
   }
