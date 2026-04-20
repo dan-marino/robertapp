@@ -38,7 +38,7 @@ export default async function LineupPage({ params }: { params: Promise<{ id: str
   let lineup;
 
   try {
-    lineup = generateLineup(rsvps, players);
+    lineup = generateLineup(rsvps, players, game.lineupMode ?? 'split');
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return (
