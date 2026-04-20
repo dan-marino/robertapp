@@ -80,6 +80,70 @@ export class PositionAssigner {
   }
 
   /**
+   * Pre-assign preferred pitchers to consecutive inning blocks.
+   * Returns the filled inning indices and a map of pre-assigned player innings.
+   */
+  private assignPitchers(
+    allPositions: Position[][],
+    inningsPlayed: number[],
+    lastPlayedInning: number[],
+    targetInnings: number[]
+  ): { filledInnings: Set<number>; preAssignedPlayers: Map<number, Set<number>> } {
+    // Find preferred pitchers: guys first, then girls
+    const preferredPitchers: CombinedPlayer[] = [];
+    for (const player of this.allPlayers.filter(p => p.isGuy)) {
+      if (player.player.preferredPositions?.some(group => group.includes(Position.PITCHER))) {
+        preferredPitchers.push(player);
+      }
+    }
+    for (const player of this.allPlayers.filter(p => !p.isGuy)) {
+      if (player.player.preferredPositions?.some(group => group.includes(Position.PITCHER))) {
+        preferredPitchers.push(player);
+      }
+    }
+
+    // Select up to 3 pitchers
+    const selectedPitchers = preferredPitchers.slice(0, 3);
+
+    const filledInnings = new Set<number>();
+    const preAssignedPlayers = new Map<number, Set<number>>();
+
+    if (selectedPitchers.length === 0) {
+      return { filledInnings, preAssignedPlayers };
+    }
+
+    // Compute inning blocks based on number of pitchers
+    const blocks: number[][] = [];
+    if (selectedPitchers.length === 3) {
+      blocks.push([0, 1], [2, 3], [4, 5]);
+    } else if (selectedPitchers.length === 2) {
+      blocks.push([0, 1, 2], [3, 4, 5]);
+    } else {
+      // 1 pitcher
+      blocks.push([0, 1, 2, 3, 4, 5]);
+    }
+
+    // Pre-populate positions and track played innings
+    for (let i = 0; i < selectedPitchers.length; i++) {
+      const pitcher = selectedPitchers[i];
+      const block = blocks[i];
+      const inningsForPitcher = new Set<number>();
+
+      for (const inning of block) {
+        allPositions[pitcher.globalIdx][inning] = Position.PITCHER;
+        inningsPlayed[pitcher.globalIdx]++;
+        lastPlayedInning[pitcher.globalIdx] = inning;
+        filledInnings.add(inning);
+        inningsForPitcher.add(inning);
+      }
+
+      preAssignedPlayers.set(pitcher.globalIdx, inningsForPitcher);
+    }
+
+    return { filledInnings, preAssignedPlayers };
+  }
+
+  /**
    * Main assignment algorithm
    */
   assign(): { guysPositions: Position[][]; girlsPositions: Position[][] } {
@@ -95,6 +159,14 @@ export class PositionAssigner {
       Array(this.innings).fill(Position.BENCH)
     );
 
+    // Pre-assign preferred pitchers to their consecutive inning blocks
+    const { filledInnings: pitcherFilledInnings, preAssignedPlayers } = this.assignPitchers(
+      allPositions,
+      inningsPlayed,
+      lastPlayedInning,
+      targetInnings
+    );
+
     // For each inning, assign the 10 field positions
     for (let inning = 0; inning < this.innings; inning++) {
       // Select guys for this inning
@@ -104,7 +176,8 @@ export class PositionAssigner {
         inningsPlayed,
         lastPlayedInning,
         inning,
-        this.guysPerInning
+        this.guysPerInning,
+        preAssignedPlayers
       );
 
       // Select girls for this inning
@@ -114,13 +187,18 @@ export class PositionAssigner {
         inningsPlayed,
         lastPlayedInning,
         inning,
-        this.girlsPerInning
+        this.girlsPerInning,
+        preAssignedPlayers
       );
 
       // Combine candidates and sort: players who can get a preferred position go first
       // so they have the widest pool to pick from
       const playersThisInning = [...guysCandidates, ...girlsCandidates];
-      const availablePositions = [...FIELD_POSITIONS];
+
+      // Exclude PITCHER from available positions for innings where it's already pre-assigned
+      const availablePositions = pitcherFilledInnings.has(inning)
+        ? FIELD_POSITIONS.filter(p => p !== Position.PITCHER)
+        : [...FIELD_POSITIONS];
 
       // Sort candidates so those with unmet preferred positions get first pick
       playersThisInning.sort((aIdx, bIdx) => {
@@ -219,11 +297,15 @@ export class PositionAssigner {
     inningsPlayed: number[],
     lastPlayedInning: number[],
     currentInning: number,
-    spotsNeeded: number
+    spotsNeeded: number,
+    preAssignedPlayers: Map<number, Set<number>> = new Map()
   ): number[] {
     const candidates: number[] = [];
 
     for (const player of players) {
+      // Skip if this player is already pre-assigned for this inning (e.g., pre-assigned pitcher)
+      if (preAssignedPlayers.get(player.globalIdx)?.has(currentInning)) continue;
+
       const target = targetInnings[player.globalIdx];
       const played = inningsPlayed[player.globalIdx];
 
