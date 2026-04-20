@@ -15,6 +15,8 @@ npm run build      # compile TypeScript
 
 The app is a TypeScript CLI. Entry point is `src/index.ts`. The core logic lives in `src/models/`. See `ARCHITECTURE.md` for a full breakdown.
 
+`docs/solutions/` — documented solutions to past bugs, algorithm patterns, and best practices, organized by category with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant when implementing or debugging in documented areas.
+
 ## Key constraints
 
 - **Co-ed rules**: minimum 3 girls on the field each inning, maximum 7 guys. Never violate these.
