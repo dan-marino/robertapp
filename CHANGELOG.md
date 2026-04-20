@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- **Unified mode playing time fairness** — fixed structural 2-inning gap between guys and girls in unified mode. `PositionAssigner` now computes uniform targets (total spots ÷ total players) with a feasibility check; falls back to gender-specific targets only when the girl collective cannot meet the mandatory floor. New `selectCandidatesUnified()` selects all 10 players per inning from a combined pool with gender constraints.
+- **Whole-game position shuffle** — replaced the per-inning-independent shuffle with a two-phase whole-game algorithm: (1) preferred pitchers are assigned consecutive inning blocks (2+2+2 / 3+3 / 6) with shuffled candidate selection for rotation variety; (2) remaining positions are assigned with a shared `positionCounts` map so players cycle through different positions across all 6 innings rather than repeating the same spot.
 - **Unified batting lineup mode** — set `"lineupMode": "unified"` on a game in `src/data/season.json` to merge guys and girls into a single numbered batting order. Omitting the field defaults to `"split"` (existing behavior unchanged). Placement rules in unified mode: no girl leadoff, no more than 3 consecutive guys, last batter is a girl when mathematically possible, girls distributed as evenly as possible. Web UI shows female rows with a pink background tint; CSV exports a single section with no separator row.
 - Next.js 15 web admin at `web/` (React 19, Tailwind CSS 4)
 - Player management: list, add, edit, and delete players via `/players` page and REST API

@@ -7,6 +7,19 @@ import { intersperseBattingOrder } from '@cli/utils/intersperse';
 
 const INNINGS = [1, 2, 3, 4, 5, 6];
 
+const FIELD_POSITIONS: Position[] = [
+  Position.PITCHER,
+  Position.CATCHER,
+  Position.FIRST_BASE,
+  Position.SECOND_BASE,
+  Position.THIRD_BASE,
+  Position.SHORTSTOP,
+  Position.LEFT_FIELD,
+  Position.LEFT_CENTER,
+  Position.RIGHT_CENTER,
+  Position.RIGHT_FIELD,
+];
+
 function shuffleArray<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -77,10 +90,152 @@ export default function LineupGrid({ lineup }: Props) {
 
   function shufflePositions() {
     const updated = players.map(pl => ({ ...pl, positions: [...pl.positions] }));
-    for (let inning = 0; inning < INNINGS.length; inning++) {
-      const positions = shuffleArray(updated.map(pl => pl.positions[inning]));
-      updated.forEach((pl, idx) => { pl.positions[inning] = positions[idx]; });
+
+    // ── Phase 1: Assign preferred pitchers to consecutive inning blocks ─────────
+    //
+    // Mirror the PositionAssigner logic: up to 3 preferred pitchers each receive a
+    // consecutive 2-inning block (or 3 if only 2 pitchers, or 6 if only 1).
+    // Shuffle the candidate list so different shuffles produce different pitcher rotations.
+
+    const preferredPitcherIdxs: number[] = [];
+    updated.forEach((pl, idx) => {
+      if (pl.player.preferredPositions?.some(group => group.includes(Position.PITCHER))) {
+        preferredPitcherIdxs.push(idx);
+      }
+    });
+
+    const selectedPitchers = shuffleArray(preferredPitcherIdxs).slice(0, 3);
+
+    const pitcherBlocks: number[][] =
+      selectedPitchers.length >= 3 ? [[0, 1], [2, 3], [4, 5]] :
+      selectedPitchers.length === 2 ? [[0, 1, 2], [3, 4, 5]] :
+      selectedPitchers.length === 1 ? [[0, 1, 2, 3, 4, 5]] : [];
+
+    // Track pre-assigned pitcher slots so Phase 2 skips them
+    const pitcherSlots = new Set<string>();   // "playerIdx-inning"
+    const inningsWithPitcher = new Set<number>();
+
+    for (let p = 0; p < selectedPitchers.length; p++) {
+      const playerIdx = selectedPitchers[p];
+      for (const inning of pitcherBlocks[p]) {
+        if (updated[playerIdx].positions[inning] !== Position.BENCH) {
+          updated[playerIdx].positions[inning] = Position.PITCHER;
+          pitcherSlots.add(`${playerIdx}-${inning}`);
+          inningsWithPitcher.add(inning);
+        }
+      }
     }
+
+    // ── Phase 2: Assign all remaining positions with cross-inning variety ────────
+    //
+    // We track how many times each player has been assigned each position so far.
+    // When multiple positions are equally valid (preferred / non-anti), we prefer
+    // the one the player has played least often — giving a richer rotation
+    // across the six innings instead of the same position every time.
+
+    const positionCounts = new Map<number, Map<Position, number>>();
+
+    const getCount = (idx: number, pos: Position) =>
+      positionCounts.get(idx)?.get(pos) ?? 0;
+
+    const recordAssignment = (idx: number, pos: Position) => {
+      if (!positionCounts.has(idx)) positionCounts.set(idx, new Map());
+      const m = positionCounts.get(idx)!;
+      m.set(pos, (m.get(pos) ?? 0) + 1);
+    };
+
+    // Seed history with pitcher assignments from Phase 1
+    for (const slot of pitcherSlots) {
+      recordAssignment(Number(slot.split('-')[0]), Position.PITCHER);
+    }
+
+    for (let inning = 0; inning < INNINGS.length; inning++) {
+      // Players who need a position this inning (not benched, not pre-assigned pitcher)
+      const playersThisInning = updated
+        .map((pl, idx) => ({ pl, idx }))
+        .filter(({ pl, idx }) =>
+          pl.positions[inning] !== Position.BENCH &&
+          !pitcherSlots.has(`${idx}-${inning}`)
+        );
+
+      if (playersThisInning.length === 0) continue;
+
+      // Available positions: all field positions, minus PITCHER if a pitcher is already
+      // covering it this inning.
+      const available: Position[] = inningsWithPitcher.has(inning)
+        ? FIELD_POSITIONS.filter(p => p !== Position.PITCHER)
+        : [...FIELD_POSITIONS];
+
+      // Sort players so the most-constrained pick first (same logic as PositionAssigner):
+      //   1. Players with anti-positions (most-constrained among them go first)
+      //   2. Players with preferred positions available
+      //   3. Everyone else
+      const shuffled = shuffleArray(playersThisInning);
+      shuffled.sort((a, b) => {
+        const aAnti = a.pl.player.antiPositions ?? [];
+        const bAnti = b.pl.player.antiPositions ?? [];
+        const aHasAnti = aAnti.length > 0;
+        const bHasAnti = bAnti.length > 0;
+        if (aHasAnti && !bHasAnti) return -1;
+        if (!aHasAnti && bHasAnti) return 1;
+        if (aHasAnti && bHasAnti) {
+          const aNonAnti = available.filter(p => !aAnti.includes(p)).length;
+          const bNonAnti = available.filter(p => !bAnti.includes(p)).length;
+          if (aNonAnti !== bNonAnti) return aNonAnti - bNonAnti;
+        }
+        const aPrefs = (a.pl.player.preferredPositions ?? []).flat();
+        const bPrefs = (b.pl.player.preferredPositions ?? []).flat();
+        const aHasPref = aPrefs.some(p => available.includes(p));
+        const bHasPref = bPrefs.some(p => available.includes(p));
+        if (aHasPref && !bHasPref) return -1;
+        if (!aHasPref && bHasPref) return 1;
+        return 0;
+      });
+
+      for (const { idx, pl } of shuffled) {
+        if (available.length === 0) break;
+
+        const anti = pl.player.antiPositions ?? [];
+        const preferredGroups = pl.player.preferredPositions ?? [];
+        const allPreferred = preferredGroups.flat();
+
+        let position: Position;
+
+        // 1. Try each preferred group in priority order; within a group prefer
+        //    positions played fewest times this game (variety).
+        let preferredPick: Position | null = null;
+        for (const group of preferredGroups) {
+          const opts = available.filter(p => group.includes(p));
+          if (opts.length > 0) {
+            opts.sort((a, b) => getCount(idx, a) - getCount(idx, b));
+            preferredPick = opts[0];
+            break;
+          }
+        }
+
+        if (preferredPick !== null) {
+          position = preferredPick;
+        } else {
+          // 2. Non-anti, non-preferred positions; prefer least-played.
+          const nonAnti = available.filter(p => !anti.includes(p) && !allPreferred.includes(p));
+          if (nonAnti.length > 0) {
+            nonAnti.sort((a, b) => getCount(idx, a) - getCount(idx, b));
+            position = nonAnti[0];
+          } else {
+            // 3. Last resort: an anti-position (only when nothing better remains).
+            const antiOpts = [...available.filter(p => anti.includes(p))];
+            const fallback = antiOpts.length > 0 ? antiOpts : [...available];
+            fallback.sort((a, b) => getCount(idx, a) - getCount(idx, b));
+            position = fallback[0];
+          }
+        }
+
+        available.splice(available.indexOf(position), 1);
+        updated[idx].positions[inning] = position;
+        recordAssignment(idx, position);
+      }
+    }
+
     setPlayers(updated);
   }
 

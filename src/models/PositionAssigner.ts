@@ -53,9 +53,45 @@ export class PositionAssigner {
   }
 
   /**
-   * Calculate target innings for each player based on spots available
+   * Calculate target innings for each player based on spots available.
+   *
+   * In unified mode all players share a single pool of spots, so every player
+   * gets the same base target (totalSpots / totalPlayers). Extra innings go to
+   * the last players in the combined array (bottom-of-order), consistent with R1.
+   *
+   * In split mode guys and girls have separate spot pools (guysPerInning and
+   * girlsPerInning), so targets are computed independently per gender.
    */
-  private calculateTargets(): number[] {
+  private calculateTargets(isUnified: boolean = false): number[] {
+    const totalPlayers = this.numGuys + this.numGirls;
+
+    if (isUnified) {
+      // Unified: everyone competes for the same 10 spots per inning.
+      const totalSpots = (this.guysPerInning + this.girlsPerInning) * this.innings;
+      const base = Math.floor(totalSpots / totalPlayers);
+      const extra = totalSpots % totalPlayers;
+
+      // Verify uniform targets are feasible: the girls' total target innings must cover
+      // the mandatory minimum (girlsPerInning × innings). If girls' collective target
+      // falls short of the mandatory minimum, co-ed rules can't be met in the later
+      // innings once girls exhaust their target innings — fall back to gender-specific
+      // targets in that case (same as split mode, just better than breaking).
+      let uniformGirlTotal = 0;
+      for (let i = 0; i < this.numGirls; i++) {
+        const idx = this.numGuys + i;
+        uniformGirlTotal += base + (extra > 0 && idx >= totalPlayers - extra ? 1 : 0);
+      }
+      const mandatoryGirlInnings = this.girlsPerInning * this.innings;
+
+      if (uniformGirlTotal >= mandatoryGirlInnings) {
+        // Uniform targets are achievable — extra innings go to bottom-of-order players.
+        return this.allPlayers.map((_, idx) =>
+          base + (extra > 0 && idx >= totalPlayers - extra ? 1 : 0)
+        );
+      }
+      // Uniform targets infeasible for this roster — fall through to gender-specific targets.
+    }
+
     const targets: number[] = [];
 
     // Guys get guysPerInning spots per inning
@@ -87,8 +123,12 @@ export class PositionAssigner {
     allPositions: Position[][],
     inningsPlayed: number[],
     lastPlayedInning: number[],
-    targetInnings: number[]
-  ): { filledInnings: Set<number>; preAssignedPlayers: Map<number, Set<number>> } {
+  ): {
+    filledInnings: Set<number>;
+    preAssignedPlayers: Map<number, Set<number>>;
+    pitcherGuyInnings: Set<number>;   // innings where the pre-assigned pitcher is a guy
+    pitcherGirlInnings: Set<number>;  // innings where the pre-assigned pitcher is a girl
+  } {
     // Find preferred pitchers: guys first, then girls
     const preferredPitchers: CombinedPlayer[] = [];
     for (const player of this.allPlayers.filter(p => p.isGuy)) {
@@ -107,9 +147,11 @@ export class PositionAssigner {
 
     const filledInnings = new Set<number>();
     const preAssignedPlayers = new Map<number, Set<number>>();
+    const pitcherGuyInnings = new Set<number>();
+    const pitcherGirlInnings = new Set<number>();
 
     if (selectedPitchers.length === 0) {
-      return { filledInnings, preAssignedPlayers };
+      return { filledInnings, preAssignedPlayers, pitcherGuyInnings, pitcherGirlInnings };
     }
 
     // Compute inning blocks based on number of pitchers
@@ -123,7 +165,12 @@ export class PositionAssigner {
       blocks.push([0, 1, 2, 3, 4, 5]);
     }
 
-    // Pre-populate positions and track played innings
+    // Pre-populate positions and credit inningsPlayed for the full block upfront.
+    // Pre-crediting is essential: without it, pitchers would be selected for general
+    // innings before their block runs, accumulating innings beyond their target.
+    // The spot count in the main loop is reduced by 1 for each pitcher inning so
+    // that the total players assigned (pre-pitcher + general candidates) always
+    // equals guysPerInning + girlsPerInning and no player is inadvertently dropped.
     for (let i = 0; i < selectedPitchers.length; i++) {
       const pitcher = selectedPitchers[i];
       const block = blocks[i];
@@ -132,22 +179,29 @@ export class PositionAssigner {
       for (const inning of block) {
         allPositions[pitcher.globalIdx][inning] = Position.PITCHER;
         inningsPlayed[pitcher.globalIdx]++;
-        lastPlayedInning[pitcher.globalIdx] = inning;
+        // Do NOT update lastPlayedInning here — it should only reflect general innings
+        // played so that gap-based tiebreaking treats pitchers as "haven't played recently"
+        // until they actually appear in the general lineup loop.
         filledInnings.add(inning);
         inningsForPitcher.add(inning);
+        if (pitcher.isGuy) {
+          pitcherGuyInnings.add(inning);
+        } else {
+          pitcherGirlInnings.add(inning);
+        }
       }
 
       preAssignedPlayers.set(pitcher.globalIdx, inningsForPitcher);
     }
 
-    return { filledInnings, preAssignedPlayers };
+    return { filledInnings, preAssignedPlayers, pitcherGuyInnings, pitcherGirlInnings };
   }
 
   /**
    * Main assignment algorithm
    */
-  assign(): { guysPositions: Position[][]; girlsPositions: Position[][] } {
-    const targetInnings = this.calculateTargets();
+  assign(isUnified: boolean = false): { guysPositions: Position[][]; girlsPositions: Position[][] } {
+    const targetInnings = this.calculateTargets(isUnified);
     const inningsPlayed: number[] = Array(this.allPlayers.length).fill(0);
     const lastPlayedInning: number[] = Array(this.allPlayers.length).fill(-2);
     const lastPosition: Map<number, Position> = new Map();
@@ -159,41 +213,59 @@ export class PositionAssigner {
       Array(this.innings).fill(Position.BENCH)
     );
 
-    // Pre-assign preferred pitchers to their consecutive inning blocks
-    const { filledInnings: pitcherFilledInnings, preAssignedPlayers } = this.assignPitchers(
-      allPositions,
-      inningsPlayed,
-      lastPlayedInning,
-      targetInnings
-    );
+    // Pre-assign preferred pitchers to their consecutive inning blocks.
+    // assignPitchers() pre-credits inningsPlayed for all pitcher innings upfront so that
+    // pitchers are never selected by the general loop for innings outside their block.
+    const { filledInnings: pitcherFilledInnings, preAssignedPlayers, pitcherGuyInnings, pitcherGirlInnings } =
+      this.assignPitchers(allPositions, inningsPlayed, lastPlayedInning);
 
     // For each inning, assign the 10 field positions
     for (let inning = 0; inning < this.innings; inning++) {
-      // Select guys for this inning
-      const guysCandidates = this.selectCandidates(
-        this.allPlayers.filter(p => p.isGuy),
-        targetInnings,
-        inningsPlayed,
-        lastPlayedInning,
-        inning,
-        this.guysPerInning,
-        preAssignedPlayers
-      );
+      // Reduce the requested candidate count by 1 for whichever gender has a pre-assigned
+      // pitcher this inning, since that spot is already filled by the pitcher.
+      const guysNeeded = this.guysPerInning - (pitcherGuyInnings.has(inning) ? 1 : 0);
+      const girlsNeeded = this.girlsPerInning - (pitcherGirlInnings.has(inning) ? 1 : 0);
 
-      // Select girls for this inning
-      const girlsCandidates = this.selectCandidates(
-        this.allPlayers.filter(p => !p.isGuy),
-        targetInnings,
-        inningsPlayed,
-        lastPlayedInning,
-        inning,
-        this.girlsPerInning,
-        preAssignedPlayers
-      );
+      let playersThisInning: number[];
 
-      // Combine candidates and sort: players who can get a preferred position go first
-      // so they have the widest pool to pick from
-      const playersThisInning = [...guysCandidates, ...girlsCandidates];
+      if (isUnified) {
+        // Unified mode: select from all players together, enforcing gender constraints.
+        // minGirls and maxGuys come from the per-inning composition reduced by any
+        // pre-assigned pitchers for this inning.
+        playersThisInning = this.selectCandidatesUnified(
+          targetInnings,
+          inningsPlayed,
+          lastPlayedInning,
+          inning,
+          guysNeeded + girlsNeeded,
+          girlsNeeded,
+          guysNeeded,
+          preAssignedPlayers
+        );
+      } else {
+        // Split mode: select guys and girls independently against their own targets.
+        const guysCandidates = this.selectCandidates(
+          this.allPlayers.filter(p => p.isGuy),
+          targetInnings,
+          inningsPlayed,
+          lastPlayedInning,
+          inning,
+          guysNeeded,
+          preAssignedPlayers
+        );
+
+        const girlsCandidates = this.selectCandidates(
+          this.allPlayers.filter(p => !p.isGuy),
+          targetInnings,
+          inningsPlayed,
+          lastPlayedInning,
+          inning,
+          girlsNeeded,
+          preAssignedPlayers
+        );
+
+        playersThisInning = [...guysCandidates, ...girlsCandidates];
+      }
 
       // Exclude PITCHER from available positions for innings where it's already pre-assigned
       const availablePositions = pitcherFilledInnings.has(inning)
@@ -204,10 +276,20 @@ export class PositionAssigner {
       playersThisInning.sort((aIdx, bIdx) => {
         // Anti-position players pick first — they need to avoid their anti-positions
         // before preferred-seeking players claim all the good spots.
-        const aHasAnti = (this.allPlayers[aIdx].player.antiPositions?.length ?? 0) > 0;
-        const bHasAnti = (this.allPlayers[bIdx].player.antiPositions?.length ?? 0) > 0;
+        const aAnti = this.allPlayers[aIdx].player.antiPositions ?? [];
+        const bAnti = this.allPlayers[bIdx].player.antiPositions ?? [];
+        const aHasAnti = aAnti.length > 0;
+        const bHasAnti = bAnti.length > 0;
         if (aHasAnti && !bHasAnti) return -1;
         if (!aHasAnti && bHasAnti) return 1;
+
+        if (aHasAnti && bHasAnti) {
+          // Both have anti-positions: most constrained player picks first.
+          // Constrained = fewest non-anti options left in the available pool.
+          const aNonAnti = availablePositions.filter(p => !aAnti.includes(p)).length;
+          const bNonAnti = availablePositions.filter(p => !bAnti.includes(p)).length;
+          if (aNonAnti !== bNonAnti) return aNonAnti - bNonAnti;
+        }
         // fall through to existing preferred-position logic
 
         const aPlayer = this.allPlayers[aIdx];
@@ -289,6 +371,94 @@ export class PositionAssigner {
   }
 
   /**
+   * Unified-mode candidate selection: select totalSpots players from the full
+   * combined pool while enforcing gender constraints (at least minGirls girls,
+   * at most maxGuys guys). Players are sorted by the same slack/deficit/gap
+   * priority as the split-mode selector.
+   *
+   * Phase 1 guarantees the minimum girl count by taking the top minGirls female
+   * candidates unconditionally. Phase 2 fills the remaining spots from the
+   * combined remaining pool in priority order, skipping any guy that would
+   * exceed maxGuys.
+   */
+  private selectCandidatesUnified(
+    targetInnings: number[],
+    inningsPlayed: number[],
+    lastPlayedInning: number[],
+    currentInning: number,
+    totalSpots: number,
+    minGirls: number,
+    maxGuys: number,
+    preAssignedPlayers: Map<number, Set<number>>
+  ): number[] {
+    const totalRemainingInnings = this.innings - currentInning;
+
+    const computeSlack = (idx: number): number => {
+      const remainingTarget = targetInnings[idx] - inningsPlayed[idx];
+      const preAssigned = preAssignedPlayers.get(idx);
+      const futureCommitted = preAssigned
+        ? [...preAssigned].filter(inn => inn > currentInning).length
+        : 0;
+      return (totalRemainingInnings - futureCommitted) - remainingTarget;
+    };
+
+    const sortByPriority = (a: number, b: number): number => {
+      const aSlack = computeSlack(a);
+      const bSlack = computeSlack(b);
+      if (aSlack !== bSlack) return aSlack - bSlack;
+      const aDeficit = targetInnings[a] - inningsPlayed[a];
+      const bDeficit = targetInnings[b] - inningsPlayed[b];
+      if (aDeficit !== bDeficit) return bDeficit - aDeficit;
+      return (currentInning - lastPlayedInning[b]) - (currentInning - lastPlayedInning[a]);
+    };
+
+    const guyCandidates: number[] = [];
+    const girlCandidates: number[] = [];
+
+    for (const player of this.allPlayers) {
+      if (preAssignedPlayers.get(player.globalIdx)?.has(currentInning)) continue;
+      if (inningsPlayed[player.globalIdx] >= targetInnings[player.globalIdx]) continue;
+      if (currentInning === 0 && player.isLate) continue;
+      if (player.isGuy) {
+        guyCandidates.push(player.globalIdx);
+      } else {
+        girlCandidates.push(player.globalIdx);
+      }
+    }
+
+    guyCandidates.sort(sortByPriority);
+    girlCandidates.sort(sortByPriority);
+
+    const selected: number[] = [];
+    let guyCount = 0;
+    let girlCount = 0;
+
+    // Phase 1: guarantee the minimum number of girls
+    const mandatoryGirls = Math.min(minGirls, girlCandidates.length);
+    for (let i = 0; i < mandatoryGirls; i++) {
+      selected.push(girlCandidates[i]);
+      girlCount++;
+    }
+
+    // Phase 2: fill remaining spots from the combined remaining pool in priority order
+    const remainingPool = [
+      ...guyCandidates,
+      ...girlCandidates.slice(mandatoryGirls),
+    ].sort(sortByPriority);
+
+    for (const idx of remainingPool) {
+      if (selected.length >= totalSpots) break;
+      const isGuy = this.allPlayers[idx].isGuy;
+      if (isGuy && guyCount >= maxGuys) continue;
+      selected.push(idx);
+      if (isGuy) guyCount++;
+      else girlCount++;
+    }
+
+    return selected;
+  }
+
+  /**
    * Select which players from a group should play this inning
    */
   private selectCandidates(
@@ -319,13 +489,19 @@ export class PositionAssigner {
     }
 
     // Compute slack per candidate: how many more innings can this player afford to sit?
-    // totalRemainingInnings includes the current inning as a play opportunity.
+    // For pitchers with future committed innings, we subtract those from the available
+    // innings so the slack reflects only innings available for general selection.
     // slack === 0 means the player MUST play this inning or they can't reach their target.
     const totalRemainingInnings = this.innings - currentInning;
     const slackMap = new Map<number, number>();
     for (const idx of candidates) {
       const remainingTarget = targetInnings[idx] - inningsPlayed[idx];
-      slackMap.set(idx, totalRemainingInnings - remainingTarget);
+      const preAssigned = preAssignedPlayers.get(idx);
+      const futureCommitted = preAssigned
+        ? [...preAssigned].filter(inn => inn > currentInning).length
+        : 0;
+      const generalRemainingInnings = totalRemainingInnings - futureCommitted;
+      slackMap.set(idx, generalRemainingInnings - remainingTarget);
     }
 
     // Sort by priority

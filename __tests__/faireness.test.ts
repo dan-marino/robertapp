@@ -1,5 +1,5 @@
 import { generateLineup } from '../src/generator';
-import { Position } from '../src/types';
+import { Position, Gender } from '../src/types';
 import {
   createRoster,
   createAllRSVPs,
@@ -343,5 +343,72 @@ describe('Fair Playing Time', () => {
       // 19 players, 10 spots = 9 benched per inning
       assertFairPlayingTime(lineup, 1);
     });
+  });
+});
+
+describe('Unified Mode Fairness', () => {
+  // Helper: check that ALL players (across genders) play within maxDiff innings of each other
+  function assertUnifiedFairness(guysCount: number, girlsCount: number, maxDiff: number = 1): void {
+    const roster = createRoster(guysCount, girlsCount);
+    const rsvps = createAllRSVPs(roster);
+    const lineup = generateLineup(rsvps, roster, 'unified');
+
+    const allInnings = lineup.lineup.map(p => getInningsPlayed(p.positions));
+    const min = Math.min(...allInnings);
+    const max = Math.max(...allInnings);
+
+    if (max - min > maxDiff) {
+      throw new Error(
+        `Unified mode playing time unfair: ${min}-${max} innings ` +
+        `(diff: ${max - min}, max allowed: ${maxDiff}). ` +
+        `Counts: ${JSON.stringify(
+          lineup.lineup.map(p => ({
+            name: p.player.firstName,
+            gender: p.player.gender === Gender.MALE ? 'M' : 'F',
+            innings: getInningsPlayed(p.positions),
+          }))
+        )}`
+      );
+    }
+  }
+
+  test('10 guys / 5 girls — all players within 1 inning of each other', () => {
+    // Total spots = 10*6 = 60; total players = 15; 60/15 = 4 each.
+    // In split mode guys would get 4-5 and girls 3-4 (2-inning gap).
+    // In unified mode every player should play exactly 4.
+    assertUnifiedFairness(10, 5);
+  });
+
+  test('9 guys / 5 girls — all players within 1 inning of each other', () => {
+    // Total spots = 60; total players = 14; 60/14 = 4 r4 → 10 get 4, 4 get 5.
+    assertUnifiedFairness(9, 5);
+  });
+
+  test('8 guys / 4 girls — all players within 1 inning of each other', () => {
+    // Total spots = 60; total players = 12; 60/12 = 5 each.
+    assertUnifiedFairness(8, 4);
+  });
+
+  test('7 guys / 3 girls — all players within 1 inning (minimum roster)', () => {
+    // Total = 10 players, 10 spots per inning → everyone plays all 6 innings.
+    assertUnifiedFairness(7, 3);
+  });
+
+  test('co-ed rules still respected in unified mode (min 3 girls, max 7 guys per inning)', () => {
+    const roster = createRoster(10, 5);
+    const rsvps = createAllRSVPs(roster);
+    const lineup = generateLineup(rsvps, roster, 'unified');
+
+    for (let inning = 0; inning < 6; inning++) {
+      const guysOnField = lineup.lineup.filter(
+        p => p.player.gender === Gender.MALE && p.positions[inning] !== Position.BENCH
+      ).length;
+      const girlsOnField = lineup.lineup.filter(
+        p => p.player.gender === Gender.FEMALE && p.positions[inning] !== Position.BENCH
+      ).length;
+
+      expect(girlsOnField).toBeGreaterThanOrEqual(3);
+      expect(guysOnField).toBeLessThanOrEqual(7);
+    }
   });
 });

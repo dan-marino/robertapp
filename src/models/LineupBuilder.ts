@@ -82,7 +82,7 @@ export class LineupBuilder {
     girlsPerInning: number
   ): { guysPositions: Position[][]; girlsPositions: Position[][] } {
     const assigner = new PositionAssigner(guys, girls, guysPerInning, girlsPerInning, this.innings);
-    return assigner.assign();
+    return assigner.assign(this.lineupMode === 'unified');
   }
 
   /**
