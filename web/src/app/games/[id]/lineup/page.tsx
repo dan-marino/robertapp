@@ -68,7 +68,7 @@ export default async function LineupPage({ params }: { params: Promise<{ id: str
           <DownloadCsvButton game={game} lineup={lineup} />
         </div>
       </div>
-      <LineupGrid lineup={lineup} />
+      <LineupGrid key={lineup.lineupMode} lineup={lineup} />
     </div>
   );
 }
