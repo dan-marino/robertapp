@@ -13,32 +13,38 @@ export default function LineupModeToggle({ gameId, currentMode }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  async function toggle() {
-    const nextMode: LineupMode = currentMode === 'unified' ? 'split' : 'unified';
+  async function select(mode: LineupMode) {
+    if (mode === currentMode || loading) return;
     setLoading(true);
     await fetch(`/api/games/${gameId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lineupMode: nextMode }),
+      body: JSON.stringify({ lineupMode: mode }),
     });
     router.refresh();
     setLoading(false);
   }
 
-  const isUnified = currentMode === 'unified';
-
   return (
-    <button
-      onClick={toggle}
-      disabled={loading}
-      className="text-xs px-3 py-1.5 rounded border font-medium transition-colors disabled:opacity-50"
-      style={
-        isUnified
-          ? { borderColor: '#6366f1', color: '#6366f1', backgroundColor: '#eef2ff' }
-          : { borderColor: '#d1d5db', color: '#374151', backgroundColor: '#fff' }
-      }
-    >
-      {isUnified ? 'Unified lineup' : 'Split lineup'}
-    </button>
+    <div className="flex rounded border border-gray-300 overflow-hidden text-xs font-medium disabled:opacity-50">
+      {(['split', 'unified'] as LineupMode[]).map(mode => {
+        const isActive = currentMode === mode;
+        const label = mode === 'split' ? 'Split' : 'Unified';
+        return (
+          <button
+            key={mode}
+            onClick={() => select(mode)}
+            disabled={loading}
+            className={`px-3 py-1.5 transition-colors disabled:opacity-50 ${
+              isActive
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
