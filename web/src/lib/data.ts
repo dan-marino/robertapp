@@ -22,6 +22,14 @@ export function readSeason(): { season: Season; games: Game[] } {
   return JSON.parse(raw) as { season: Season; games: Game[] };
 }
 
+export function updateGame(gameId: string, patch: Partial<Game>): void {
+  const data = readSeason();
+  const idx = data.games.findIndex(g => g.id === gameId);
+  if (idx === -1) throw new Error(`Game ${gameId} not found`);
+  data.games[idx] = { ...data.games[idx], ...patch };
+  fs.writeFileSync(dataPath('season.json'), JSON.stringify(data, null, 2), 'utf-8');
+}
+
 export function readRsvps(gameId: string): RSVP[] {
   try {
     const raw = fs.readFileSync(dataPath(`rsvps-${gameId}.json`), 'utf-8');
