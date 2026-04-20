@@ -5,6 +5,7 @@ import { formatGameDate } from '@/lib/utils';
 import { generateLineup } from '@cli/generator';
 import LineupGrid from '@/components/LineupGrid';
 import DownloadCsvButton from '@/components/DownloadCsvButton';
+import LineupModeToggle from '@/components/LineupModeToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ export default async function LineupPage({ params }: { params: Promise<{ id: str
   let lineup;
 
   try {
-    lineup = generateLineup(rsvps, players);
+    lineup = generateLineup(rsvps, players, game.lineupMode ?? 'split');
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return (
@@ -62,9 +63,12 @@ export default async function LineupPage({ params }: { params: Promise<{ id: str
             {lineup.guysCount} guys · {lineup.girlsCount} girls
           </p>
         </div>
-        <DownloadCsvButton game={game} lineup={lineup} />
+        <div className="flex items-center gap-2">
+          <LineupModeToggle gameId={id} currentMode={game.lineupMode ?? 'split'} />
+          <DownloadCsvButton game={game} lineup={lineup} />
+        </div>
       </div>
-      <LineupGrid lineup={lineup} />
+      <LineupGrid key={lineup.lineupMode} lineup={lineup} />
     </div>
   );
 }

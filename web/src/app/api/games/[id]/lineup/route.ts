@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readRoster, readRsvps } from '@/lib/data';
+import { readRoster, readRsvps, readSeason } from '@/lib/data';
 import { generateLineup } from '@cli/generator';
 
 export async function GET(
@@ -16,10 +16,12 @@ export async function GET(
     );
   }
 
+  const { games } = readSeason();
+  const game = games.find(g => g.id === id);
   const players = readRoster();
 
   try {
-    const lineup = generateLineup(rsvps, players);
+    const lineup = generateLineup(rsvps, players, game?.lineupMode ?? 'split');
     return NextResponse.json(lineup);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to generate lineup';
