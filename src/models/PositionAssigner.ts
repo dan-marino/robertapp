@@ -200,7 +200,12 @@ export class PositionAssigner {
   /**
    * Main assignment algorithm
    */
-  assign(isUnified: boolean = false): { guysPositions: Position[][]; girlsPositions: Position[][] } {
+  assign(isUnified: boolean = false): {
+    guysPositions: Position[][];
+    girlsPositions: Position[][];
+    guysTargetInnings: number[];
+    girlsTargetInnings: number[];
+  } {
     const targetInnings = this.calculateTargets(isUnified);
     const inningsPlayed: number[] = Array(this.allPlayers.length).fill(0);
     const lastPlayedInning: number[] = Array(this.allPlayers.length).fill(-2);
@@ -366,8 +371,10 @@ export class PositionAssigner {
     // Split back into guys and girls arrays
     const guysPositions = allPositions.slice(0, this.numGuys);
     const girlsPositions = allPositions.slice(this.numGuys);
+    const guysTargetInnings = targetInnings.slice(0, this.numGuys);
+    const girlsTargetInnings = targetInnings.slice(this.numGuys);
 
-    return { guysPositions, girlsPositions };
+    return { guysPositions, girlsPositions, guysTargetInnings, girlsTargetInnings };
   }
 
   /**

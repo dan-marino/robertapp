@@ -31,29 +31,40 @@ export class LineupBuilder {
     const composition = calculateFieldComposition(guys.length, girls.length);
 
     // Step 3: Assign positions for both genders together (shared 10 field positions)
-    const { guysPositions, girlsPositions } = this.assignPositionsForBothGenders(
-      guys,
-      girls,
-      composition.guysOnField,
-      composition.girlsOnField
-    );
+    const { guysPositions, girlsPositions, guysTargetInnings, girlsTargetInnings } =
+      this.assignPositionsForBothGenders(
+        guys,
+        girls,
+        composition.guysOnField,
+        composition.girlsOnField
+      );
 
     // Step 4: Build final lineup objects
-    const guysLineup = this.buildPlayerLineups(guys, guysPositions);
-    const girlsLineup = this.buildPlayerLineups(girls, girlsPositions);
+    const guysLineup = this.buildPlayerLineups(guys, guysPositions, guysTargetInnings);
+    const girlsLineup = this.buildPlayerLineups(girls, girlsPositions, girlsTargetInnings);
 
     if (this.lineupMode === 'unified') {
       // Determine interleaved batting order using original PlayerWithMetadata arrays
       const merged = intersperseBattingOrder(guys, girls);
 
-      // Build a position lookup by player id
+      // Build lookup maps by player id
       const guyPositionsById = new Map(guys.map((p, i) => [p.player.id, guysPositions[i]]));
       const girlPositionsById = new Map(girls.map((p, i) => [p.player.id, girlsPositions[i]]));
+      const targetInningsById = new Map<string, number>([
+        ...guys.map((p, i) => [p.player.id, guysTargetInnings[i]] as const),
+        ...girls.map((p, i) => [p.player.id, girlsTargetInnings[i]] as const),
+      ]);
+      const isLateById = new Map<string, boolean>([
+        ...guys.map(p => [p.player.id, p.isLate] as const),
+        ...girls.map(p => [p.player.id, p.isLate] as const),
+      ]);
 
       const unifiedLineup: PlayerLineup[] = merged.map((p, idx) => ({
         player: p.player,
         battingOrder: idx + 1,
         positions: (guyPositionsById.get(p.player.id) ?? girlPositionsById.get(p.player.id))!,
+        isLate: isLateById.get(p.player.id)!,
+        targetInnings: targetInningsById.get(p.player.id)!,
       }));
 
       return {
@@ -80,7 +91,12 @@ export class LineupBuilder {
     girls: PlayerWithMetadata[],
     guysPerInning: number,
     girlsPerInning: number
-  ): { guysPositions: Position[][]; girlsPositions: Position[][] } {
+  ): {
+    guysPositions: Position[][];
+    girlsPositions: Position[][];
+    guysTargetInnings: number[];
+    girlsTargetInnings: number[];
+  } {
     const assigner = new PositionAssigner(guys, girls, guysPerInning, girlsPerInning, this.innings);
     return assigner.assign(this.lineupMode === 'unified');
   }
@@ -90,12 +106,15 @@ export class LineupBuilder {
    */
   private buildPlayerLineups(
     players: PlayerWithMetadata[],
-    positions: Position[][]
+    positions: Position[][],
+    targetInnings: number[]
   ): PlayerLineup[] {
     return players.map((p, idx) => ({
       player: p.player,
       battingOrder: idx + 1,
       positions: positions[idx],
+      isLate: p.isLate,
+      targetInnings: targetInnings[idx],
     }));
   }
 }
