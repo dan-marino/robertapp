@@ -16,7 +16,7 @@ export interface BenchTimingPlayer {
  * Degenerate cases: n=1 → 'early' only; n=2 → 'early'/'late'; n=3 → one each.
  * General: earlyCount = ceil(n/3), lateCount = ceil(n/3), middle fills the gap.
  */
-function classifyThird(positionIndex: number, groupSize: number): 'early' | 'middle' | 'late' {
+export function classifyThird(positionIndex: number, groupSize: number): 'early' | 'middle' | 'late' {
   if (groupSize === 1) return 'early';
   if (groupSize === 2) return positionIndex === 0 ? 'early' : 'late';
   if (groupSize === 3) {
@@ -53,7 +53,8 @@ function classifyThird(positionIndex: number, groupSize: number): 'early' | 'mid
 export function assignBenchSlots(
   players: BenchTimingPlayer[],
   pitcherBlockMap: Map<string, Set<number>> = new Map(),
-  innings: number = 6
+  innings: number = 6,
+  guysBenchPerInning?: number  // If provided, caps how many guys bench per inning (maintains field composition)
 ): Map<string, number[]> {
   // ── Setup ─────────────────────────────────────────────────────────────────
 
@@ -64,9 +65,12 @@ export function assignBenchSlots(
     .filter(p => p.gender === Gender.FEMALE)
     .sort((a, b) => a.battingOrder - b.battingOrder);
 
+  const numGuys = guys.length;
   const numGirls = girls.length;
   // R13: at most (numGirls − 3) girls can bench in any single inning.
   const maxGirlsBenchPerInning = Math.max(0, numGirls - 3);
+  // Field composition: cap guys benched per inning to maintain correct guy count on field.
+  const maxGuysBenchPerInning = guysBenchPerInning ?? numGuys; // default: unconstrained
 
   // Bench count per player (innings − targetInnings).
   const benchCountMap = new Map<string, number>(
@@ -150,6 +154,7 @@ export function assignBenchSlots(
   // ── Assignment loop ───────────────────────────────────────────────────────
 
   const girlsBenchedPerInning = Array(innings).fill(0);
+  const guysBenchedPerInning = Array(innings).fill(0);
   const assignedPerPlayer = new Map<string, Set<number>>(
     players.map(p => [p.id, new Set<number>()])
   );
@@ -178,23 +183,28 @@ export function assignBenchSlots(
       for (const inning of preferred) {
         // R13: skip this inning for a girl if it would leave fewer than 3 girls on field.
         if (isGirl && girlsBenchedPerInning[inning] >= maxGirlsBenchPerInning) continue;
+        // Field composition: skip if guy bench cap would be exceeded.
+        if (!isGirl && guysBenchedPerInning[inning] >= maxGuysBenchPerInning) continue;
 
         result.get(player.id)!.push(inning);
         alreadyAssigned.add(inning);
         if (isGirl) girlsBenchedPerInning[inning]++;
+        else guysBenchedPerInning[inning]++;
         found = true;
         break;
       }
 
       // Fallback: soft preferences exhausted — pick any valid inning.
-      // (Occurs when preferred innings are all blocked by R13 or pitcher constraints.)
+      // (Occurs when preferred innings are all blocked by R13, guy cap, or pitcher constraints.)
       if (!found) {
         for (let i = 0; i < innings; i++) {
           if (alreadyAssigned.has(i)) continue;
           if (isGirl && girlsBenchedPerInning[i] >= maxGirlsBenchPerInning) continue;
+          if (!isGirl && guysBenchedPerInning[i] >= maxGuysBenchPerInning) continue;
           result.get(player.id)!.push(i);
           alreadyAssigned.add(i);
           if (isGirl) girlsBenchedPerInning[i]++;
+          else guysBenchedPerInning[i]++;
           break;
         }
         // If no valid inning exists (e.g., numGirls ≤ 3 and girls need bench),
