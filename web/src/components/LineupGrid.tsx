@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Position, Gender } from '@cli/types';
 import type { GameLineup } from '@cli/types';
 import { intersperseBattingOrder } from '@cli/utils/intersperse';
+import { assignBenchSlots } from '@cli/utils/benchTiming';
+import type { BenchTimingPlayer } from '@cli/utils/benchTiming';
+import { calculateFieldComposition } from '@cli/utils/calculations';
 
 const INNINGS = [1, 2, 3, 4, 5, 6];
 
@@ -50,6 +53,10 @@ interface Props {
 
 export default function LineupGrid({ lineup }: Props) {
   const [players, setPlayers] = useState(lineup.lineup);
+  const [undoVisible, setUndoVisible] = useState(false);
+  const [isShuffling, setIsShuffling] = useState(false);
+  const previousPlayers = useRef<typeof players | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isUnified = lineup.lineupMode === 'unified';
 
@@ -61,41 +68,62 @@ export default function LineupGrid({ lineup }: Props) {
     ? players.filter(pl => pl.player.gender === Gender.FEMALE)
     : players.slice(lineup.guysCount);
 
-  function shuffleOrder() {
+  // Clear undo timer on unmount
+  useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current); }, []);
+
+  function shuffleLineup() {
+    // Snapshot for undo (R2a)
+    previousPlayers.current = players;
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndoVisible(true);
+    undoTimer.current = setTimeout(() => setUndoVisible(false), 8000);
+
+    // Brief animation (R2b)
+    setIsShuffling(true);
+    setTimeout(() => setIsShuffling(false), 400);
+
+    // ── Phase 0: Shuffle batting order ──────────────────────────────────────
     const guysShuffled = shuffleArray(guys);
     const girlsShuffled = shuffleArray(girls);
 
+    let updated: typeof players;
+
     if (isUnified) {
-      // Re-run intersperse to maintain placement rules, then assign unified batting order
       const merged = intersperseBattingOrder(
-        guysShuffled.map(pl => ({ player: pl.player, isLate: false, inningsPlayed: 0 })),
-        girlsShuffled.map(pl => ({ player: pl.player, isLate: false, inningsPlayed: 0 }))
+        guysShuffled.map(pl => ({ player: pl.player, isLate: pl.isLate ?? false, inningsPlayed: 0 })),
+        girlsShuffled.map(pl => ({ player: pl.player, isLate: pl.isLate ?? false, inningsPlayed: 0 }))
       );
-      // Restore positions from the current players array
-      const positionsById = new Map(players.map(pl => [pl.player.id, pl.positions]));
-      setPlayers(
-        merged.map((p, i) => ({
-          player: p.player,
-          battingOrder: i + 1,
-          positions: positionsById.get(p.player.id)!,
-        }))
-      );
+      const isLateById = new Map(players.map(pl => [pl.player.id, pl.isLate ?? false]));
+      const targetInningsById = new Map(players.map(pl => [pl.player.id, pl.targetInnings ?? INNINGS.length]));
+      const positionsById = new Map(players.map(pl => [pl.player.id, [...pl.positions]]));
+      updated = merged.map((p, i) => ({
+        player: p.player,
+        battingOrder: i + 1,
+        positions: positionsById.get(p.player.id)!,
+        isLate: isLateById.get(p.player.id)!,
+        targetInnings: targetInningsById.get(p.player.id)!,
+      }));
     } else {
-      setPlayers([
-        ...guysShuffled.map((pl, i) => ({ ...pl, battingOrder: i + 1 })),
-        ...girlsShuffled.map((pl, i) => ({ ...pl, battingOrder: i + 1 })),
-      ]);
+      updated = [
+        ...guysShuffled.map((pl, i) => ({ ...pl, battingOrder: i + 1, positions: [...pl.positions] })),
+        ...girlsShuffled.map((pl, i) => ({ ...pl, battingOrder: i + 1, positions: [...pl.positions] })),
+      ];
     }
-  }
 
-  function shufflePositions() {
-    const updated = players.map(pl => ({ ...pl, positions: [...pl.positions] }));
+    // Clear old bench slots — Phase 2 will assign fresh bench innings.
+    for (const pl of updated) {
+      for (let i = 0; i < pl.positions.length; i++) {
+        if (pl.positions[i] === Position.BENCH) {
+          pl.positions[i] = Position.LEFT_FIELD; // placeholder; Phase 3 overwrites
+        }
+      }
+    }
 
-    // ── Phase 1: Assign preferred pitchers to consecutive inning blocks ─────────
+    // ── Phase 1: Pitcher-block assignment ────────────────────────────────────
     //
-    // Mirror the PositionAssigner logic: up to 3 preferred pitchers each receive a
-    // consecutive 2-inning block (or 3 if only 2 pitchers, or 6 if only 1).
-    // Shuffle the candidate list so different shuffles produce different pitcher rotations.
+    // Up to 3 preferred pitchers each receive a consecutive 2-inning block
+    // (or 3 if only 2 pitchers, or 6 if only 1). Bench slots are cleared above
+    // so all block innings can be assigned PITCHER freely.
 
     const preferredPitcherIdxs: number[] = [];
     updated.forEach((pl, idx) => {
@@ -111,27 +139,75 @@ export default function LineupGrid({ lineup }: Props) {
       selectedPitchers.length === 2 ? [[0, 1, 2], [3, 4, 5]] :
       selectedPitchers.length === 1 ? [[0, 1, 2, 3, 4, 5]] : [];
 
-    // Track pre-assigned pitcher slots so Phase 2 skips them
     const pitcherSlots = new Set<string>();   // "playerIdx-inning"
     const inningsWithPitcher = new Set<number>();
+    const pitcherBlockMap = new Map<string, Set<number>>();
 
     for (let p = 0; p < selectedPitchers.length; p++) {
       const playerIdx = selectedPitchers[p];
+      const playerId = updated[playerIdx].player.id;
+      if (!pitcherBlockMap.has(playerId)) pitcherBlockMap.set(playerId, new Set());
       for (const inning of pitcherBlocks[p]) {
-        if (updated[playerIdx].positions[inning] !== Position.BENCH) {
-          updated[playerIdx].positions[inning] = Position.PITCHER;
-          pitcherSlots.add(`${playerIdx}-${inning}`);
-          inningsWithPitcher.add(inning);
-        }
+        pitcherBlockMap.get(playerId)!.add(inning);
+        updated[playerIdx].positions[inning] = Position.PITCHER;
+        pitcherSlots.add(`${playerIdx}-${inning}`);
+        inningsWithPitcher.add(inning);
       }
     }
 
-    // ── Phase 2: Assign all remaining positions with cross-inning variety ────────
+    // ── Phase 2: Bench slot assignment ───────────────────────────────────────
     //
-    // We track how many times each player has been assigned each position so far.
-    // When multiple positions are equally valid (preferred / non-anti), we prefer
-    // the one the player has played least often — giving a richer rotation
-    // across the six innings instead of the same position every time.
+    // Build BenchTimingPlayer[] using within-gender batting order for thirds
+    // classification (R8). Pass pitcherBlockMap so bench slots avoid pitcher
+    // block innings (R17). Pass maxGuysBenchPerInning to preserve field
+    // composition (co-ed rules R13/R14).
+
+    const updatedGuys = updated.filter(pl => pl.player.gender === Gender.MALE);
+    const updatedGirls = updated.filter(pl => pl.player.gender === Gender.FEMALE);
+
+    const guysSorted = [...updatedGuys].sort((a, b) => a.battingOrder - b.battingOrder);
+    const girlsSorted = [...updatedGirls].sort((a, b) => a.battingOrder - b.battingOrder);
+
+    const benchPlayers: BenchTimingPlayer[] = [
+      ...guysSorted.map((pl, i) => ({
+        id: pl.player.id,
+        gender: pl.player.gender,
+        battingOrder: i + 1,
+        targetInnings: pl.targetInnings ?? INNINGS.length,
+        isLate: pl.isLate ?? false,
+      })),
+      ...girlsSorted.map((pl, i) => ({
+        id: pl.player.id,
+        gender: pl.player.gender,
+        battingOrder: i + 1,
+        targetInnings: pl.targetInnings ?? INNINGS.length,
+        isLate: pl.isLate ?? false,
+      })),
+    ];
+
+    const composition = calculateFieldComposition(updatedGuys.length, updatedGirls.length);
+    const maxGuysBenchPerInning = updatedGuys.length - composition.guysOnField;
+
+    const benchAssignments = assignBenchSlots(
+      benchPlayers,
+      pitcherBlockMap,
+      INNINGS.length,
+      maxGuysBenchPerInning
+    );
+
+    const playerById = new Map(updated.map(pl => [pl.player.id, pl]));
+    for (const [playerId, benchInnings] of benchAssignments) {
+      const pl = playerById.get(playerId);
+      if (!pl) continue;
+      for (const inning of benchInnings) {
+        pl.positions[inning] = Position.BENCH;
+      }
+    }
+
+    // ── Phase 3: Field position variety assignment ───────────────────────────
+    //
+    // Assign non-bench, non-pitcher innings using positionCounts tracking for
+    // cross-inning variety (R15, R16, R18).
 
     const positionCounts = new Map<number, Map<Position, number>>();
 
@@ -150,7 +226,6 @@ export default function LineupGrid({ lineup }: Props) {
     }
 
     for (let inning = 0; inning < INNINGS.length; inning++) {
-      // Players who need a position this inning (not benched, not pre-assigned pitcher)
       const playersThisInning = updated
         .map((pl, idx) => ({ pl, idx }))
         .filter(({ pl, idx }) =>
@@ -160,16 +235,11 @@ export default function LineupGrid({ lineup }: Props) {
 
       if (playersThisInning.length === 0) continue;
 
-      // Available positions: all field positions, minus PITCHER if a pitcher is already
-      // covering it this inning.
       const available: Position[] = inningsWithPitcher.has(inning)
         ? FIELD_POSITIONS.filter(p => p !== Position.PITCHER)
         : [...FIELD_POSITIONS];
 
-      // Sort players so the most-constrained pick first (same logic as PositionAssigner):
-      //   1. Players with anti-positions (most-constrained among them go first)
-      //   2. Players with preferred positions available
-      //   3. Everyone else
+      // Sort most-constrained first: anti-position players, then preferred, then rest
       const shuffled = shuffleArray(playersThisInning);
       shuffled.sort((a, b) => {
         const aAnti = a.pl.player.antiPositions ?? [];
@@ -201,8 +271,7 @@ export default function LineupGrid({ lineup }: Props) {
 
         let position: Position;
 
-        // 1. Try each preferred group in priority order; within a group prefer
-        //    positions played fewest times this game (variety).
+        // 1. Try preferred groups in priority order; prefer least-played within group.
         let preferredPick: Position | null = null;
         for (const group of preferredGroups) {
           const opts = available.filter(p => group.includes(p));
@@ -216,13 +285,13 @@ export default function LineupGrid({ lineup }: Props) {
         if (preferredPick !== null) {
           position = preferredPick;
         } else {
-          // 2. Non-anti, non-preferred positions; prefer least-played.
+          // 2. Non-anti, non-preferred; prefer least-played.
           const nonAnti = available.filter(p => !anti.includes(p) && !allPreferred.includes(p));
           if (nonAnti.length > 0) {
             nonAnti.sort((a, b) => getCount(idx, a) - getCount(idx, b));
             position = nonAnti[0];
           } else {
-            // 3. Last resort: an anti-position (only when nothing better remains).
+            // 3. Last resort: anti-position (only when nothing else remains).
             const antiOpts = [...available.filter(p => anti.includes(p))];
             const fallback = antiOpts.length > 0 ? antiOpts : [...available];
             fallback.sort((a, b) => getCount(idx, a) - getCount(idx, b));
@@ -239,21 +308,42 @@ export default function LineupGrid({ lineup }: Props) {
     setPlayers(updated);
   }
 
+  function handleUndo() {
+    if (previousPlayers.current) {
+      setPlayers(previousPlayers.current);
+      previousPlayers.current = null;
+    }
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndoVisible(false);
+  }
+
   return (
     <div>
-      <div className="flex gap-2 mb-3">
+      <div className="flex items-center gap-3 mb-3">
         <button
-          onClick={shuffleOrder}
-          className="text-xs px-3 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium"
+          onClick={shuffleLineup}
+          className={`text-xs px-3 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium transition-transform ${isShuffling ? 'scale-95' : ''}`}
         >
-          Shuffle Order
+          Shuffle Lineup
         </button>
-        <button
-          onClick={shufflePositions}
-          className="text-xs px-3 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium"
-        >
-          Shuffle Positions
-        </button>
+        {undoVisible && (
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>Lineup shuffled.</span>
+            <button
+              onClick={handleUndo}
+              className="underline hover:text-gray-700 font-medium"
+            >
+              Undo
+            </button>
+            <button
+              onClick={() => setUndoVisible(false)}
+              className="text-gray-400 hover:text-gray-600"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </div>
     <div className="overflow-x-auto">
       <table className="text-sm border-collapse w-full">
