@@ -71,6 +71,8 @@ export interface PlayerLineup {
   player: Player;
   battingOrder: number; // 1-indexed position within their gender group
   positions: Position[]; // Index 0 = Inning 1, Index 5 = Inning 6
+  isLate: boolean;        // true if player arrived late (sits inning 1, bottom 20% batting)
+  targetInnings: number;  // how many innings this player is scheduled to play (server-computed)
 }
 
 // Input to the generator

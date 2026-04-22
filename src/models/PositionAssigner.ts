@@ -1,5 +1,6 @@
 import { Position, Gender } from '../types';
 import { PlayerWithMetadata } from './PlayerSorter';
+import { classifyThird } from '../utils/benchTiming';
 
 const FIELD_POSITIONS: Position[] = [
   Position.PITCHER,
@@ -31,6 +32,8 @@ export class PositionAssigner {
   private innings: number;
   private numGuys: number;
   private numGirls: number;
+  // Batting-order thirds classification per player (globalIdx → third), used as bench timing tiebreaker (R8-R11).
+  private benchThirds: Map<number, 'early' | 'middle' | 'late'> = new Map();
 
   constructor(
     guys: PlayerWithMetadata[],
@@ -200,8 +203,27 @@ export class PositionAssigner {
   /**
    * Main assignment algorithm
    */
-  assign(isUnified: boolean = false): { guysPositions: Position[][]; girlsPositions: Position[][] } {
+  assign(isUnified: boolean = false): {
+    guysPositions: Position[][];
+    girlsPositions: Position[][];
+    guysTargetInnings: number[];
+    girlsTargetInnings: number[];
+  } {
     const targetInnings = this.calculateTargets(isUnified);
+
+    // Classify each player into batting-order thirds within their gender group (R8-R11).
+    // Early-third players prefer to bench early; late-third prefer to bench late.
+    // These are used as a final tiebreaker when slack/deficit/gap are all equal.
+    const guysGlobal = this.allPlayers.filter(p => p.isGuy);
+    const girlsGlobal = this.allPlayers.filter(p => !p.isGuy);
+    this.benchThirds = new Map();
+    for (let i = 0; i < guysGlobal.length; i++) {
+      this.benchThirds.set(guysGlobal[i].globalIdx, classifyThird(i, guysGlobal.length));
+    }
+    for (let i = 0; i < girlsGlobal.length; i++) {
+      this.benchThirds.set(girlsGlobal[i].globalIdx, classifyThird(i, girlsGlobal.length));
+    }
+
     const inningsPlayed: number[] = Array(this.allPlayers.length).fill(0);
     const lastPlayedInning: number[] = Array(this.allPlayers.length).fill(-2);
     const lastPosition: Map<number, Position> = new Map();
@@ -366,8 +388,10 @@ export class PositionAssigner {
     // Split back into guys and girls arrays
     const guysPositions = allPositions.slice(0, this.numGuys);
     const girlsPositions = allPositions.slice(this.numGuys);
+    const guysTargetInnings = targetInnings.slice(0, this.numGuys);
+    const girlsTargetInnings = targetInnings.slice(this.numGuys);
 
-    return { guysPositions, girlsPositions };
+    return { guysPositions, girlsPositions, guysTargetInnings, girlsTargetInnings };
   }
 
   /**
@@ -409,7 +433,24 @@ export class PositionAssigner {
       const aDeficit = targetInnings[a] - inningsPlayed[a];
       const bDeficit = targetInnings[b] - inningsPlayed[b];
       if (aDeficit !== bDeficit) return bDeficit - aDeficit;
-      return (currentInning - lastPlayedInning[b]) - (currentInning - lastPlayedInning[a]);
+      const gapDiff = (currentInning - lastPlayedInning[b]) - (currentInning - lastPlayedInning[a]);
+      if (gapDiff !== 0) return gapDiff;
+      // Tiebreaker: batting-order thirds bench timing (R8-R11).
+      const benchPreference = (idx: number): number => {
+        const third = this.benchThirds.get(idx) ?? 'middle';
+        if (third === 'early') {
+          if (currentInning <= 1) return 1;
+          if (currentInning >= 4) return -1;
+          return 0;
+        }
+        if (third === 'late') {
+          if (currentInning >= 4) return 1;
+          if (currentInning <= 1) return -1;
+          return 0;
+        }
+        return 0;
+      };
+      return benchPreference(a) - benchPreference(b);
     };
 
     const guyCandidates: number[] = [];
@@ -523,7 +564,21 @@ export class PositionAssigner {
 
       const aGap = currentInning - lastPlayedInning[a];
       const bGap = currentInning - lastPlayedInning[b];
-      return bGap - aGap; // Longer gap = higher priority
+      if (aGap !== bGap) {
+        return bGap - aGap; // Longer gap = higher priority
+      }
+
+      // Tiebreaker: batting-order thirds bench timing (R8-R11).
+      // Early-third prefer to bench in innings 0-1.
+      // Late-third prefer to bench in innings 4-5; prefer to play in innings 0-3.
+      // Higher score = lower play priority (more likely to bench this inning).
+      const benchPreference = (idx: number): number => {
+        const third = this.benchThirds.get(idx) ?? 'middle';
+        if (third === 'early') return currentInning <= 1 ? 1 : 0;
+        if (third === 'late') return currentInning >= 4 ? 1 : -1; // -1 = prefer play in 0-3
+        return 0; // middle: no preference
+      };
+      return benchPreference(a) - benchPreference(b);
     });
 
     return candidates.slice(0, spotsNeeded);

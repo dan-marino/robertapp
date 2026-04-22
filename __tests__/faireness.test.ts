@@ -1,8 +1,9 @@
 import { generateLineup } from '../src/generator';
-import { Position, Gender } from '../src/types';
+import { Position, Gender, RSVP } from '../src/types';
 import {
   createRoster,
   createAllRSVPs,
+  createRSVP,
   getInningsPlayed,
   assertFairPlayingTime,
   getMaxConsecutiveBench,
@@ -409,6 +410,84 @@ describe('Unified Mode Fairness', () => {
 
       expect(girlsOnField).toBeGreaterThanOrEqual(3);
       expect(guysOnField).toBeLessThanOrEqual(7);
+    }
+  });
+});
+
+describe('Bench Timing (R8-R12)', () => {
+  // Roster: 10 guys, 5 girls (split mode).
+  // guysPerInning=7 → 3 guys bench per inning.
+  // Targets: 8 guys get target-4 (bench 2 innings), 2 guys get target-5 (bench 1 inning).
+  // Early-third = ceil(10/3) = 4 guys (batting positions 1-4).
+  // Late-third  = 4 guys (batting positions 7-10).
+  // Middle      = 2 guys (batting positions 5-6).
+
+  function getBenchInnings(positions: Position[]): number[] {
+    return positions.reduce<number[]>((acc, pos, idx) => (pos === Position.BENCH ? [...acc, idx] : acc), []);
+  }
+
+  test('early-third guys have at least one bench inning in innings 1-2 (indices 0-1)', () => {
+    const roster = createRoster(10, 5);
+    const rsvps = createAllRSVPs(roster);
+    const lineup = generateLineup(rsvps, roster);
+
+    const guysLineup = lineup.lineup.slice(0, lineup.guysCount);
+    const earlyCount = Math.ceil(guysLineup.length / 3);
+    const earlyThird = guysLineup.slice(0, earlyCount);
+
+    earlyThird.forEach(p => {
+      const benchInnings = getBenchInnings(p.positions);
+      const hasEarlyBench = benchInnings.some(i => i <= 1);
+      expect(hasEarlyBench).toBe(true);
+    });
+  });
+
+  test('late-third guys have at least one bench inning in innings 5-6 (indices 4-5)', () => {
+    const roster = createRoster(10, 5);
+    const rsvps = createAllRSVPs(roster);
+    const lineup = generateLineup(rsvps, roster);
+
+    const guysLineup = lineup.lineup.slice(0, lineup.guysCount);
+    const lateCount = Math.ceil(guysLineup.length / 3);
+    const lateThird = guysLineup.slice(guysLineup.length - lateCount);
+
+    lateThird.forEach(p => {
+      const benchInnings = getBenchInnings(p.positions);
+      const hasLateBench = benchInnings.some(i => i >= 4);
+      expect(hasLateBench).toBe(true);
+    });
+  });
+
+  test('late arrival player benches in inning 1 (index 0)', () => {
+    const roster = createRoster(10, 5);
+    // Make guy[0] (batting pos 1) arrive late
+    const rsvps: RSVP[] = roster.map(p =>
+      createRSVP(p.id, p.id === 'g0')
+    );
+    const lineup = generateLineup(rsvps, roster);
+
+    const latePlayer = lineup.lineup.find(p => p.player.id === 'g0')!;
+    expect(latePlayer.isLate).toBe(true);
+    expect(latePlayer.positions[0]).toBe(Position.BENCH);
+  });
+
+  test('bench timing does not break R14 fairness (max-min ≤ 1)', () => {
+    const roster = createRoster(10, 5);
+    const rsvps = createAllRSVPs(roster);
+    const lineup = generateLineup(rsvps, roster);
+    assertFairPlayingTime(lineup, 1);
+  });
+
+  test('bench timing does not break R13 co-ed rules', () => {
+    const roster = createRoster(10, 5);
+    const rsvps = createAllRSVPs(roster);
+    const lineup = generateLineup(rsvps, roster);
+
+    for (let inning = 0; inning < 6; inning++) {
+      const girlsOnField = lineup.lineup.filter(
+        p => p.player.gender === Gender.FEMALE && p.positions[inning] !== Position.BENCH
+      ).length;
+      expect(girlsOnField).toBeGreaterThanOrEqual(3);
     }
   });
 });
