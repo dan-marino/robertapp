@@ -47,7 +47,8 @@
       "date": "2026-04-27",
       "time": "7:00pm",
       "location": "Queensbridge",
-      "opponent": "Bob's Baseball Club"
+      "opponent": "Bob's Baseball Club",
+      "lineupMode": "unified"
     },
     {
       "id": "g4",
